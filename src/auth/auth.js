@@ -1,22 +1,13 @@
 import jwt from "jsonwebtoken";
 import http from "http-status";
-
+import ApiResponse from "../services/ApiResponse.js";
 import { auth_error_code } from "../constants/statusCodes.js";
 import {
   access_denied,
   token_not_found,
 } from "../constants/messageConstants.js";
 
-import ApiResponse from "../services/ApiResponse.js";
-import userModel from "../models/userModel.js";
-
-export const authMiddleware = async (req, res, next) => {
-  const isAuthRequired = req.path.includes("/auth/");
-
-  if (!isAuthRequired) {
-    return next();
-  }
-
+export const verifyToken = async (req, res, next) => {
   try {
     let token = req.header("Authorization");
 
@@ -30,26 +21,20 @@ export const authMiddleware = async (req, res, next) => {
       token = token.slice(7, token.length).trimLeft();
     }
 
-    const userToken = await userModel.findOne({ userAccessToken: token });
+    const user = await userModel.findOne({ userAccessToken: token });
 
-    if (!userToken) {
+    if (!user) {
       return res
         .status(http.UNAUTHORIZED)
         .json(ApiResponse.error(auth_error_code, token_not_found));
     }
 
-    if (!userToken.userIsActive) {
-      return res
-        .status(http.SERVICE_UNAVAILABLE)
-        .json(ApiResponse.error(auth_error_code, access_denied));
-    }
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-
-    req.user = payload;
+    req.user = verified;
     next();
   } catch (err) {
-    return res
+    res
       .status(http.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(auth_error_code, err.message));
   }

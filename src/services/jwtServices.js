@@ -5,7 +5,7 @@ export const generateAccessToken = (id, role) => {
 };
 
 export const generateRefreshToken = (id) => {
-  return jwt.sign({ id: id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ id: id }, process.env.JWT_SECRET);
 };
 
 export const verifyUserToken = (req) => {

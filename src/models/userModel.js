@@ -1,16 +1,30 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import { excludeuserFieldsPlugin } from "../plugins/userModelPlugin.js";
+import { ADMIN_ROLE } from "../constants/role.js";
 
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
+  userFirstName: {
+    type: String,
+    required: true,
+  },
+  userLastName: {
+    type: String,
+    required: true,
+  },
   userEmail: {
     type: String,
     required: true,
   },
   userPassword: {
     type: String,
+    required: true,
+  },
+  userRole: {
+    type: String,
+    enum: [ADMIN_ROLE],
     required: true,
   },
   userAccessToken: {

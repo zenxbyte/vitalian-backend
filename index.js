@@ -5,9 +5,10 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import mongoose from "mongoose";
-import swaggerUi from "swagger-ui-express";
 
-import { swaggerDocs } from "./src/services/swaggerOptions.js";
+import router from "./src/routes/index.js";
+import { createDefaultUser } from "./src/controllers/userController.js";
+import { authMiddleware } from "./src/middlewares/auth.js";
 
 dotenv.config();
 const app = express();
@@ -28,8 +29,11 @@ app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 // Morgan middleware for logging
 app.use(morgan("common"));
 
+app.use(authMiddleware);
+
 app.get("/", (req, res) => res.send("BACKEND"));
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+//app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use("/server", router);
 
 mongoose.connect(process.env.MONGODB_URL);
 
@@ -43,6 +47,7 @@ db.once("connected", () => {
   console.log("Connected to MongoDB");
 
   app.listen(port, () => {
+    createDefaultUser();
     console.log(`Server is running at http://localhost:${port}`);
   });
 });
