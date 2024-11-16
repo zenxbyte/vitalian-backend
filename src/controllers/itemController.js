@@ -11,7 +11,7 @@ import {
 } from "../constants/messageConstants.js";
 import { itemValidationSchema } from "../schemas/ItemValidatoinSchema.js";
 import ItemModel from "../models/itemModel.js";
-import { uploadFileToS3 } from "../middlewares/upload.js";
+import { deleteImagesFromS3, uploadFileToS3 } from "../middlewares/upload.js";
 import categoryModel from "../models/categoryModel.js";
 import { itemUpdateSchema } from "../schemas/itemUpdateSchema.js";
 
@@ -158,16 +158,46 @@ export const updateItemController = async (req, res) => {
 
     const updatedImgs = value.itemImages.map((img) => img.imgKey);
 
-    const deletedImgs = existingImgs.filter(
-      (img) => !updatedImgs.include(img.imgKey)
-    );
+    const deletedImgs = existingImgs
+      .filter((img) => !updatedImgs.includes(img.imgKey))
+      .map((img) => img.imgKey);
 
-    console.log(deletedImgs);
+    const newImages =
+      files.length > 0
+        ? await Promise.all(
+            files.map(async (img) => {
+              return await uploadFileToS3(
+                img,
+                `${result.itemCategoryId.toString()}/${result._id.toString()}`
+              );
+            })
+          )
+        : [];
+
+    if (deletedImgs.length > 0) {
+      await deleteImagesFromS3(deletedImgs);
+    }
+
+    const updatedImglist = [...value.itemImages, ...newImages];
+
+    // Update the document with new values
+    const updatedData = {
+      ...value,
+      itemImages: updatedImglist,
+    };
+
+    await ItemModel.findByIdAndUpdate(
+      result._id,
+      { $set: updatedData },
+      { new: true }
+    );
 
     return res
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message));
   } catch (error) {
+    console.log(error);
+
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));

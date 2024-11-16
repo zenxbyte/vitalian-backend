@@ -13,6 +13,7 @@ const ItemSchema = new Schema(
     },
     itemTitle: { type: String, required: true },
     itemDescription: { type: String, default: "" },
+    itemIsActive: { type: Boolean, default: true },
     itemPrice: { type: Number, required: true, min: 0 },
     itemDiscount: { type: Number, default: 0 },
     itemColor: { type: String, required: true, enum: COLORS },
@@ -20,6 +21,7 @@ const ItemSchema = new Schema(
       {
         imgUrl: { type: String, default: null },
         imgKey: { type: String, default: null },
+        _id: false,
       },
     ],
 
@@ -29,6 +31,7 @@ const ItemSchema = new Schema(
         size: { type: String, required: true },
         availability: { type: Boolean, default: true },
         quantity: { type: Number, default: 0, min: 0 },
+        _id: false,
       },
     ],
 

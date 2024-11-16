@@ -12,6 +12,6 @@ const itemRoutes = express.Router();
 itemRoutes.get("/noAuth/details/:id", getItemController);
 itemRoutes.get("/noAuth/by-category/:id", getItemsByCategoryController);
 itemRoutes.post("/auth/create/:id", upload.array("file"), createItemController);
-itemRoutes.put("/auth/update/:id", updateItemController);
+itemRoutes.put("/auth/update/:id", upload.array("file"), updateItemController);
 
 export default itemRoutes;
