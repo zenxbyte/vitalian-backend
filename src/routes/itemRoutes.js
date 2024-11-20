@@ -3,12 +3,14 @@ import {
   createItemController,
   getItemController,
   getItemsByCategoryController,
+  getItemsController,
   updateItemController,
 } from "../controllers/itemController.js";
 import { upload } from "../middlewares/upload.js";
 
 const itemRoutes = express.Router();
 
+itemRoutes.get("/noAuth/items", getItemsController);
 itemRoutes.get("/noAuth/details/:id", getItemController);
 itemRoutes.get("/noAuth/by-category/:id", getItemsByCategoryController);
 itemRoutes.post("/auth/create/:id", upload.array("file"), createItemController);
