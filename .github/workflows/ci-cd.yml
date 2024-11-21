@@ -30,14 +30,14 @@ jobs:
       - name: Deploy to environment
         run: echo "Production depolyment"
       - name: Stop service
-        run: cd ~/server/vitalian-backend && sudo systemctl stop vitalian-uat-server.service
+        run: cd ~/server-backend && sudo systemctl stop vitalian-uat-server.service
       - name: Delete old files
-        run: cd /home/ec2-user/server/vitalian-backend && sudo rm -r README.md  index.js  package.json  src  yarn.lock node_modules  package-lock.json
+        run: cd /home/ec2-user/server && sudo rm -r README.md  index.js  package.json  src  yarn.lock node_modules  package-lock.json
       - name: Copy files
-        run: cd /home/ec2-user/actions-runner/_work/vitalian-backend && sudo cp -r vitalian-backend/* /home/ec2-user/server/vitalian-backend
+        run: cd /home/ec2-user/actions-runner/_work/vitalian-backend && sudo cp -r vitalian-backend/* /home/ec2-user/server
       - name: Change owner
-        run: sudo chown -R ec2-user:ec2-user /home/ec2-user/server/vitalian-backend/ && sudo chmod -R 755 /home/ec2-user/server/vitalian-backend/
+        run: sudo chown -R ec2-user:ec2-user /home/ec2-user/server/ && sudo chmod -R 755 /home/ec2-user/server/
       - name: Install dependencies
-        run: cd /home/ec2-user/server/vitalian-backend/ && sudo npm i
+        run: cd /home/ec2-user/server/ && sudo npm i
       - name: Start server
         run: sudo systemctl start vitalian-uat-server.service
