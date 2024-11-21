@@ -91,8 +91,6 @@ export const getItemsController = async (req, res) => {
         break;
     }
 
-    console.log(sort);
-
     //const result = await ItemModel.find().skip(skip).limit(limit);
     const result = await ItemModel.aggregate([
       { $match: query },
