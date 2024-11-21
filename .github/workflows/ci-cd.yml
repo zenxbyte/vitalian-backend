@@ -31,8 +31,6 @@ jobs:
         run: echo "UAT depolyment"
       - name: Stop service
         run: cd ~/server && sudo systemctl stop vitalian_uat_server.service
-      - name: Delete old files
-        run: cd /home/ec2-user/server && sudo rm -r README.md  index.js  package.json  src  yarn.lock node_modules  package-lock.json
       - name: Copy files
         run: cd /home/ec2-user/actions-runner/_work/vitalian-backend && sudo cp -r vitalian-backend/* /home/ec2-user/server
       - name: Change owner
