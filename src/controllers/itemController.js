@@ -351,3 +351,24 @@ export const updateItemController = async (req, res) => {
       .json(ApiResponse.error(error_code, error.message));
   }
 };
+
+// Get low stock products - admin
+export const getLowStockItemsController = async (req, res) => {
+  try {
+    const data = await ItemModel.find({
+      itemSizes: {
+        $lte: [{ $sum: "$itemSizes.quantity" }, 10],
+      },
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, success_message, data));
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
