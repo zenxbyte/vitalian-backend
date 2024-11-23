@@ -1,24 +1,27 @@
 import mongoose from "mongoose";
-import { PAY_CREDIT_CARD, PAY_ON_DELIVER } from "../constants/paymentMethods";
+import {
+  PAY_CREDIT_CARD,
+  PAY_ON_DELIVER,
+} from "../constants/paymentMethods.js";
 import {
   PAY_STATUS_FAILED,
   PAY_STATUS_PAID,
   PAY_STATUS_PENDING,
   PAY_STATUS_REFUNDED,
-} from "../constants/paymentStatus";
+} from "../constants/paymentStatus.js";
 import {
   ORDER_STATUS_CANCELED,
   ORDER_STATUS_DELIVERED,
   ORDER_STATUS_PENDING,
   ORDER_STATUS_PROCESSING,
   ORDER_STATUS_SHIPPED,
-} from "../constants/orderStatus";
+} from "../constants/orderStatus.js";
 
 const Schema = mongoose.Schema;
 
 // Schema for individual order items
 const OrderItemSchema = new Schema({
-  itemId: {
+  _id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "item", // Reference to a item schema, if available
     required: true,
@@ -31,6 +34,7 @@ const OrderItemSchema = new Schema({
 // Main Order Schema
 const OrderSchema = new Schema(
   {
+    orderId: { type: String, required: true },
     customer: {
       firstName: { type: String, required: true },
       lastName: { type: String, required: true },
@@ -49,6 +53,7 @@ const OrderSchema = new Schema(
       method: {
         type: String,
         enum: [PAY_CREDIT_CARD, PAY_ON_DELIVER],
+        default: PAY_CREDIT_CARD,
         required: true,
       },
       transactionId: { type: String, default: null }, // Optional: If using payment gateways
@@ -64,6 +69,7 @@ const OrderSchema = new Schema(
       },
     },
     items: [OrderItemSchema], // Array of order items
+    orderDeliveryCharges: { type: Number, required: true },
     orderTotal: { type: Number, required: true }, // Total amount for the order
     orderStatus: {
       type: String,
@@ -76,6 +82,7 @@ const OrderSchema = new Schema(
       ],
       default: ORDER_STATUS_PENDING,
     },
+    orderDeliveryId: { type: String, default: null },
     deliveryDate: { type: Date, default: null }, // Optional: Expected delivery date
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },

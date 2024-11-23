@@ -4,6 +4,7 @@ import {
   getItemController,
   getItemsByCategoryController,
   getItemsController,
+  getLowStockItemsController,
   updateItemController,
 } from "../controllers/itemController.js";
 import { upload } from "../middlewares/upload.js";
@@ -15,5 +16,6 @@ itemRoutes.get("/noAuth/details/:id", getItemController);
 itemRoutes.get("/noAuth/by-category/:id", getItemsByCategoryController);
 itemRoutes.post("/auth/create/:id", upload.array("file"), createItemController);
 itemRoutes.put("/auth/update/:id", upload.array("file"), updateItemController);
+itemRoutes.get("/auth/low-stock", getLowStockItemsController);
 
 export default itemRoutes;
