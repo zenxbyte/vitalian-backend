@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
-import { COLORS } from "../constants/colors.js";
 
 const Schema = mongoose.Schema;
 
 // Define the item schema
 const ItemSchema = new Schema(
   {
+    // Common information shared by all color variants
     itemCategoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "category",
@@ -16,26 +16,8 @@ const ItemSchema = new Schema(
     itemIsActive: { type: Boolean, default: true },
     itemPrice: { type: Number, required: true, min: 0 },
     itemDiscount: { type: Number, default: 0 },
-    itemColor: { type: String, required: true, enum: COLORS },
-    itemImages: [
-      {
-        imgUrl: { type: String, default: null },
-        imgKey: { type: String, default: null },
-        _id: false,
-      },
-    ],
 
-    // Size availability and quantity
-    itemSizes: [
-      {
-        size: { type: String, required: true },
-        availability: { type: Boolean, default: true },
-        quantity: { type: Number, default: 0, min: 0 },
-        _id: false,
-      },
-    ],
-
-    // Item other information
+    // Item other information (common to all variants)
     itemInformation: {
       material: { type: String, default: null },
       color: { type: String, default: null },
@@ -46,6 +28,29 @@ const ItemSchema = new Schema(
       modelSize: { type: String, default: null },
       washAndCare: { type: String, default: null },
     },
+
+    // Variations in color, images, and sizes
+    itemVariants: [
+      {
+        itemColor: { type: String, required: true },
+        itemImages: [
+          {
+            imgUrl: { type: String, default: null },
+            imgKey: { type: String, default: null },
+            _id: false,
+          },
+        ],
+        itemSizes: [
+          {
+            size: { type: String, required: true },
+            availability: { type: Boolean, default: true },
+            quantity: { type: Number, default: 0, min: 0 },
+            _id: false,
+          },
+        ],
+        _id: false,
+      },
+    ],
   },
   { timestamps: true }
 );

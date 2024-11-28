@@ -93,3 +93,7 @@ export const updateCategoryController = async (req, res) => {
       .json(ApiResponse.error(error_code, error.message));
   }
 };
+
+export const remakeCategories = async () => {
+  await categoryModel.updateMany({}, { $set: { catType: "Male" } });
+};

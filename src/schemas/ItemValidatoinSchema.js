@@ -1,45 +1,52 @@
 import Joi from "joi";
 
-// Define the Joi schema for item sizes
-const itemSizeSchema = Joi.object({
-  size: Joi.string().required(),
+// Validation schema for each size object within an item variant
+const sizeSchema = Joi.object({
+  size: Joi.string().required().messages({
+    "string.empty": "Size is required",
+  }),
   availability: Joi.boolean().default(true),
-  quantity: Joi.number().min(0).default(0),
+  quantity: Joi.number().min(0).default(0).messages({
+    "number.min": "Quantity cannot be negative",
+  }),
 });
 
-const itemInformationSchema = Joi.object({
-  material: Joi.string().allow(""),
-  color: Joi.string().allow(""),
-  fitType: Joi.string().allow(""),
-  stretch: Joi.string().allow(""),
-  style: Joi.string().allow(""),
-  accessories: Joi.string().allow(""),
-  modelSize: Joi.string().allow(""),
-  washAndCare: Joi.string().allow(""),
+// Validation schema for each color variant of an item
+const variantSchema = Joi.object({
+  itemColor: Joi.string().required().messages({
+    "string.empty": "Color is required",
+  }),
+  itemSizes: Joi.array().items(sizeSchema).min(1).required().messages({
+    "array.min": "At least one size is required for each color",
+  }),
 });
 
-// Joi validation schema for item creation
+// Main item validation schema
 export const itemValidationSchema = Joi.object({
-  itemTitle: Joi.string().required(),
-  itemDescription: Joi.string().allow(""), // Allow empty string as default
-  itemPrice: Joi.number().min(0).required(),
-  itemDiscount: Joi.number().min(0).default(0),
-  itemColor: Joi.string()
-    .valid(
-      "Red",
-      "Pink",
-      "Purple",
-      "Blue",
-      "Green",
-      "Orange",
-      "White",
-      "Grey",
-      "Black",
-      "Brown",
-      "Beige",
-      "Yellow"
-    )
-    .required(),
-  itemSizes: Joi.array().items(itemSizeSchema).optional(),
-  itemInformation: itemInformationSchema,
+  itemTitle: Joi.string().required().messages({
+    "string.empty": "Item title is required",
+  }),
+  itemDescription: Joi.string().allow(""), // Optional description
+  itemIsActive: Joi.boolean().default(true),
+  itemPrice: Joi.number().min(0).required().messages({
+    "number.min": "Item price cannot be negative",
+    "number.base": "Item price must be a number",
+    "any.required": "Item price is required",
+  }),
+  itemDiscount: Joi.number().min(0).default(0).messages({
+    "number.min": "Item discount cannot be negative",
+  }),
+  itemVariants: Joi.array().items(variantSchema).min(1).required().messages({
+    "array.min": "At least one item variant is required",
+  }),
+  itemInformation: Joi.object({
+    material: Joi.string().allow(null, ""),
+    color: Joi.string().allow(null, ""),
+    fitType: Joi.string().allow(null, ""),
+    stretch: Joi.string().allow(null, ""),
+    style: Joi.string().allow(null, ""),
+    accessories: Joi.string().allow(null, ""),
+    modelSize: Joi.string().allow(null, ""),
+    washAndCare: Joi.string().allow(null, ""),
+  }).default({}),
 });

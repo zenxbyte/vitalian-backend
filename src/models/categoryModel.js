@@ -6,10 +6,7 @@ const CategorySchema = new Schema({
   catName: { type: String, required: true },
   catDescription: { type: String, default: null },
   catIsActive: { type: Boolean, default: true },
-  // catImage: {
-  //   imgUrl: { type: String, required: true },
-  //   imgPrivateUrl: { type: String, required: true },
-  // },
+  catType: { type: String, required: true, default: "Men" },
   createdAt: { type: Date, default: Date.now },
 });
 

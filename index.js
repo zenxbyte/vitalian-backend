@@ -9,6 +9,7 @@ import mongoose from "mongoose";
 import router from "./src/routes/index.js";
 import { createDefaultUser } from "./src/controllers/userController.js";
 import { authMiddleware } from "./src/middlewares/auth.js";
+import { remakeCategories } from "./src/controllers/categoryController.js";
 
 dotenv.config();
 const app = express();
@@ -47,7 +48,7 @@ db.once("connected", () => {
   console.log("Connected to MongoDB");
 
   app.listen(port, () => {
-    createDefaultUser();
+    //remakeCategories();
     console.log(`Server is running at http://localhost:${port}`);
   });
 });
