@@ -245,30 +245,46 @@ export const createItemController = async (req, res) => {
         .json(ApiResponse.error(error_code, category_not_found));
     }
 
-    const item = new ItemModel({
+    const newItem = new ItemModel({
       itemCategoryId: new ObjectId(category._id),
       ...value,
     });
 
-    const newItem = await item.save();
+    newItem.itemVariants = await Promise.all(
+      value.itemVariants.map(async (variant) => {
+        const { itemColor, itemMainColor, itemSizes } = variant;
 
-    // Use Promise.all to wait for all image uploads
-    const images = await Promise.all(
-      files.map(async (img) => {
-        const uploadedImg = await uploadFileToS3(
-          img,
-          `${category._id.toString()}/${newItem._id.toString()}`
+        // Filter files based on the color property (e.g., file names include color)
+        const colorFiles = files.filter((file) =>
+          file.originalname
+            .toLowerCase()
+            .includes(itemColor.toLowerCase().replace(/\s+/g, ""))
         );
-        return uploadedImg; // Return the uploaded image information
+
+        // Use Promise.all to wait for all image uploads for this color
+        const uploadedImages = await Promise.all(
+          colorFiles.map(async (img) => {
+            const uploadedImg = await uploadFileToS3(
+              img,
+              `${category._id.toString()}/${newItem._id.toString()}/${itemColor
+                .toLowerCase()
+                .replace(/\s+/g, "")}`
+            );
+            return uploadedImg; // Return the uploaded image information
+          })
+        );
+
+        // Return the updated variant with images
+        return {
+          itemMainColor,
+          itemColor,
+          itemSizes,
+          itemImages: uploadedImages,
+        };
       })
     );
 
-    // Update the item with the images
-    await ItemModel.findOneAndUpdate(
-      { _id: newItem._id },
-      { $set: { itemImages: images } },
-      { new: true }
-    );
+    await newItem.save();
 
     return res
       .status(httpStatus.OK)
@@ -292,7 +308,6 @@ export const updateItemController = async (req, res) => {
         .json(ApiResponse.response(error_code, item_not_found));
     }
 
-    const existingImgs = result.itemImages;
     const files = req.files;
     const formdata = JSON.parse(req.body.data);
 
@@ -304,34 +319,75 @@ export const updateItemController = async (req, res) => {
         .json(ApiResponse.error(error_code, error.message));
     }
 
-    const updatedImgs = value.itemImages.map((img) => img.imgKey);
+    // Prepare to handle images based on the itemVariants structure
+    let updatedVariants = value.itemVariants;
 
-    const deletedImgs = existingImgs
-      .filter((img) => !updatedImgs.includes(img.imgKey))
-      .map((img) => img.imgKey);
+    // Process existing images and determine which ones to delete
+    const existingVariants = result.itemVariants || [];
+    const deletedImages = [];
 
-    const newImages =
-      files.length > 0
-        ? await Promise.all(
-            files.map(async (img) => {
-              return await uploadFileToS3(
-                img,
-                `${result.itemCategoryId.toString()}/${result._id.toString()}`
-              );
-            })
-          )
-        : [];
+    // Iterate through each variant to handle image updates
+    updatedVariants = await Promise.all(
+      updatedVariants.map(async (variant) => {
+        const existingVariant = existingVariants.find(
+          (v) => v.itemColor === variant.itemColor
+        );
 
-    if (deletedImgs.length > 0) {
-      await deleteImagesFromS3(deletedImgs);
+        // Get existing images for this color variant
+        const existingImages = existingVariant
+          ? existingVariant.images || []
+          : [];
+        const updatedImageKeys = variant.itemImages.map((img) => img.imgKey);
+
+        // Determine images to delete (not in the updated variant)
+        const variantDeletedImages = existingImages
+          .filter((img) => !updatedImageKeys.includes(img.imgKey))
+          .map((img) => img.imgKey);
+
+        if (variantDeletedImages.length > 0) {
+          deletedImages.push(...variantDeletedImages);
+        }
+
+        // Filter files based on the color property (e.g., file names include color)
+        const colorFiles = files.filter((file) =>
+          file.originalname
+            .toLowerCase()
+            .includes(variant.itemColor.toLowerCase().replace(/\s+/g, ""))
+        );
+
+        // Upload new images for this variant, if any
+        const newImages = await Promise.all(
+          colorFiles.map(async (img) => {
+            const uploadedImg = await uploadFileToS3(
+              img,
+              `${result.itemCategoryId.toString()}/${result._id.toString()}/${variant.itemColor
+                .toLowerCase()
+                .replace(/\s+/g, "")}`
+            );
+            return uploadedImg; // Return the uploaded image information
+          })
+        );
+
+        // Merge existing images (that are still valid) with new images
+        const updatedImageList = [...variant.itemImages, ...newImages];
+
+        // Return updated variant with merged images
+        return {
+          ...variant,
+          itemImages: updatedImageList,
+        };
+      })
+    );
+
+    // Delete images from S3 that were removed
+    if (deletedImages.length > 0) {
+      await deleteImagesFromS3(deletedImages);
     }
 
-    const updatedImglist = [...value.itemImages, ...newImages];
-
-    // Update the document with new values
+    // Prepare the updated data with merged itemVariants
     const updatedData = {
       ...value,
-      itemImages: updatedImglist,
+      itemVariants: updatedVariants,
     };
 
     await ItemModel.findByIdAndUpdate(
