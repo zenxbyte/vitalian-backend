@@ -14,6 +14,7 @@ const ItemSchema = new Schema(
     itemTitle: { type: String, required: true },
     itemDescription: { type: String, default: "" },
     itemIsActive: { type: Boolean, default: true },
+    itemBasePrice: { type: Number, required: true, min: 0, default: 0 },
     itemPrice: { type: Number, required: true, min: 0 },
     itemDiscount: { type: Number, default: 0 },
 
