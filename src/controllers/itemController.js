@@ -35,31 +35,6 @@ export const getItemsController = async (req, res) => {
 
     let query = {};
 
-    if (isValidString(filterByAvilability)) {
-      switch (filterByAvilability) {
-        case "inStock":
-          query["itemSizes"] = {
-            $gt: [{ $sum: "$itemSizes.quantity" }, 0],
-          };
-          break;
-        case "outOfStock":
-          query["itemSizes"] = {
-            $eq: [{ $sum: "$itemSizes.quantity" }, 0],
-          };
-          break;
-        default:
-          break;
-      }
-    }
-
-    if (isValidString(filterbyColor)) {
-      query["itemColor"] = filterbyColor;
-    }
-
-    if (isValidString(filterBySize)) {
-      query["itemSizes.size"] = filterBySize;
-    }
-
     if (filterByPriceMin && filterByPriceMax) {
       query["itemPrice"] = {
         $gte: filterByPriceMin,
@@ -97,16 +72,49 @@ export const getItemsController = async (req, res) => {
       { $match: query },
       {
         $lookup: {
-          from: "categories", // Customer collection
+          from: "categories",
           as: "category",
           let: { categoryId: "$itemCategoryId" },
           pipeline: [
             {
               $match: {
-                $expr: { $eq: ["$_id", "$$categoryId"] }, // Match unit ID
+                $expr: { $eq: ["$_id", "$$categoryId"] },
                 ...(isValidString(filterByCollection) && {
                   catName: filterByCollection,
                 }),
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "variants",
+          as: "itemVariants",
+          let: { variantId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$variantProduct", "$$variantId"] },
+
+                ...(isValidString(filterbyColor) && {
+                  variantColor: filterbyColor,
+                }),
+                ...(isValidString(filterBySize) && {
+                  "variantSizes.size": filterBySize,
+                }),
+                ...(isValidString(filterByAvilability) &&
+                  filterByAvilability === "inStock" && {
+                    variantSizes: {
+                      $gt: [{ $sum: "$variantSizes.quantity" }, 0],
+                    },
+                  }),
+                ...(isValidString(filterByAvilability) &&
+                  filterByAvilability === "outOfStock" && {
+                    variantSizes: {
+                      $eq: [{ $sum: "$variantSizes.outOfStock" }, 0],
+                    },
+                  }),
               },
             },
           ],
@@ -522,12 +530,4 @@ export const getLowStockItemsController = async (req, res) => {
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
   }
-};
-
-// Helper function to compare two arrays by variant fields
-const findDifference = (arr1, arr2, key) => {
-  return arr1.filter(
-    (item1) =>
-      !arr2.some((item2) => item1[key].toString() === item2[key].toString())
-  );
 };
