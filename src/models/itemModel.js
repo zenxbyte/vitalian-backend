@@ -29,29 +29,6 @@ const ItemSchema = new Schema(
       modelSize: { type: String, default: null },
       washAndCare: { type: String, default: null },
     },
-
-    // Variations in color, images, and sizes
-    itemVariants: [
-      {
-        itemColor: { type: String, required: true },
-        itemImages: [
-          {
-            imgUrl: { type: String, default: null },
-            imgKey: { type: String, default: null },
-            _id: false,
-          },
-        ],
-        itemSizes: [
-          {
-            size: { type: String, required: true },
-            availability: { type: Boolean, default: true },
-            quantity: { type: Number, default: 0, min: 0 },
-            _id: false,
-          },
-        ],
-        _id: false,
-      },
-    ],
   },
   { timestamps: true }
 );
