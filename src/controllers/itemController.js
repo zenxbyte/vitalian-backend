@@ -15,6 +15,7 @@ import { deleteImagesFromS3, uploadFileToS3 } from "../middlewares/upload.js";
 import categoryModel from "../models/categoryModel.js";
 import { itemUpdateSchema } from "../schemas/itemUpdateSchema.js";
 import { isValidString } from "../services/commonServices.js";
+import VariantModel from "../models/variantModel.js";
 
 // Get all items - Public - Filter
 export const getItemsController = async (req, res) => {
@@ -33,31 +34,6 @@ export const getItemsController = async (req, res) => {
     const sortBy = req.query.sort;
 
     let query = {};
-
-    if (isValidString(filterByAvilability)) {
-      switch (filterByAvilability) {
-        case "inStock":
-          query["itemSizes"] = {
-            $gt: [{ $sum: "$itemSizes.quantity" }, 0],
-          };
-          break;
-        case "outOfStock":
-          query["itemSizes"] = {
-            $eq: [{ $sum: "$itemSizes.quantity" }, 0],
-          };
-          break;
-        default:
-          break;
-      }
-    }
-
-    if (isValidString(filterbyColor)) {
-      query["itemColor"] = filterbyColor;
-    }
-
-    if (isValidString(filterBySize)) {
-      query["itemSizes.size"] = filterBySize;
-    }
 
     if (filterByPriceMin && filterByPriceMax) {
       query["itemPrice"] = {
@@ -96,16 +72,49 @@ export const getItemsController = async (req, res) => {
       { $match: query },
       {
         $lookup: {
-          from: "categories", // Customer collection
+          from: "categories",
           as: "category",
           let: { categoryId: "$itemCategoryId" },
           pipeline: [
             {
               $match: {
-                $expr: { $eq: ["$_id", "$$categoryId"] }, // Match unit ID
+                $expr: { $eq: ["$_id", "$$categoryId"] },
                 ...(isValidString(filterByCollection) && {
                   catName: filterByCollection,
                 }),
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "variants",
+          as: "itemVariants",
+          let: { variantId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$variantProduct", "$$variantId"] },
+
+                ...(isValidString(filterbyColor) && {
+                  variantColor: filterbyColor,
+                }),
+                ...(isValidString(filterBySize) && {
+                  "variantSizes.size": filterBySize,
+                }),
+                ...(isValidString(filterByAvilability) &&
+                  filterByAvilability === "inStock" && {
+                    variantSizes: {
+                      $gt: [{ $sum: "$variantSizes.quantity" }, 0],
+                    },
+                  }),
+                ...(isValidString(filterByAvilability) &&
+                  filterByAvilability === "outOfStock" && {
+                    variantSizes: {
+                      $eq: [{ $sum: "$variantSizes.outOfStock" }, 0],
+                    },
+                  }),
               },
             },
           ],
@@ -123,16 +132,49 @@ export const getItemsController = async (req, res) => {
       { $match: query },
       {
         $lookup: {
-          from: "categories", // Customer collection
+          from: "categories",
           as: "category",
           let: { categoryId: "$itemCategoryId" },
           pipeline: [
             {
               $match: {
-                $expr: { $eq: ["$_id", "$$categoryId"] }, // Match unit ID
+                $expr: { $eq: ["$_id", "$$categoryId"] },
                 ...(isValidString(filterByCollection) && {
                   catName: filterByCollection,
                 }),
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "variants",
+          as: "itemVariants",
+          let: { variantId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$variantProduct", "$$variantId"] },
+
+                ...(isValidString(filterbyColor) && {
+                  variantColor: filterbyColor,
+                }),
+                ...(isValidString(filterBySize) && {
+                  "variantSizes.size": filterBySize,
+                }),
+                ...(isValidString(filterByAvilability) &&
+                  filterByAvilability === "inStock" && {
+                    variantSizes: {
+                      $gt: [{ $sum: "$variantSizes.quantity" }, 0],
+                    },
+                  }),
+                ...(isValidString(filterByAvilability) &&
+                  filterByAvilability === "outOfStock" && {
+                    variantSizes: {
+                      $eq: [{ $sum: "$variantSizes.outOfStock" }, 0],
+                    },
+                  }),
               },
             },
           ],
@@ -173,12 +215,26 @@ export const getItemsByCategoryController = async (req, res) => {
 
     const skip = page * limit;
 
-    const result = await ItemModel.find({ itemCategoryId: new ObjectId(id) })
-      .sort({
-        createdAt: -1,
-      })
-      .skip(skip)
-      .limit(limit);
+    const result = await ItemModel.aggregate([
+      { $match: { itemCategoryId: new ObjectId(id) } },
+      {
+        $lookup: {
+          from: "variants",
+          localField: "_id",
+          foreignField: "variantProduct",
+          as: "itemVariants",
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limit,
+      },
+    ]);
 
     const count = await ItemModel.countDocuments({
       itemCategoryId: new ObjectId(id),
@@ -200,7 +256,36 @@ export const getItemController = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await ItemModel.findById(new ObjectId(id));
+    const result = await ItemModel.aggregate([
+      {
+        $match: { _id: new ObjectId(id) }, // Match the specific product by ID
+      },
+      {
+        $lookup: {
+          from: "variants",
+          let: { productId: "$_id" }, // Define variables for use in the pipeline
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$variantProduct", "$$productId"], // Match variants with the current product
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                variantProduct: 1,
+                variantColor: 1,
+                variantImages: 1,
+                variantSizes: 1, // Select specific fields from the variants
+              },
+            },
+          ],
+          as: "itemVariants",
+        },
+      },
+    ]);
 
     if (!result) {
       return res
@@ -210,7 +295,7 @@ export const getItemController = async (req, res) => {
 
     return res
       .status(httpStatus.OK)
-      .json(ApiResponse.response(success_code, success_message, result));
+      .json(ApiResponse.response(success_code, success_message, result[0]));
   } catch (error) {
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
@@ -247,42 +332,48 @@ export const createItemController = async (req, res) => {
 
     const newItem = new ItemModel({
       itemCategoryId: new ObjectId(category._id),
-      ...value,
+      itemTitle: value.itemTitle,
+      itemDescription: value.itemDescription,
+      itemBasePrice: value.itemBasePrice,
+      itemPrice: value.itemPrice,
+      itemDiscount: value.itemDiscount,
+      itemInformation: value.itemInformation,
     });
 
-    newItem.itemVariants = await Promise.all(
-      value.itemVariants.map(async (variant) => {
-        const { itemColor, itemMainColor, itemSizes } = variant;
+    const savedItem = await newItem.save();
 
-        // Filter files based on the color property (e.g., file names include color)
-        const colorFiles = files.filter((file) =>
-          file.originalname
-            .toLowerCase()
-            .includes(itemColor.toLowerCase().replace(/\s+/g, ""))
-        );
+    value.itemVariants.map(async (variant) => {
+      const { variantColor, variantSizes } = variant;
 
-        // Use Promise.all to wait for all image uploads for this color
-        const uploadedImages = await Promise.all(
-          colorFiles.map(async (img) => {
-            const uploadedImg = await uploadFileToS3(
-              img,
-              `${category._id.toString()}/${newItem._id.toString()}/${itemColor
-                .toLowerCase()
-                .replace(/\s+/g, "")}`
-            );
-            return uploadedImg; // Return the uploaded image information
-          })
-        );
+      // Filter files based on the color property (e.g., file names include color)
+      const colorFiles = files.filter((file) =>
+        file.originalname
+          .toLowerCase()
+          .includes(variantColor.toLowerCase().replace(/\s+/g, ""))
+      );
 
-        // Return the updated variant with images
-        return {
-          itemMainColor,
-          itemColor,
-          itemSizes,
-          itemImages: uploadedImages,
-        };
-      })
-    );
+      // Use Promise.all to wait for all image uploads for this color
+      const uploadedImages = await Promise.all(
+        colorFiles.map(async (img) => {
+          const uploadedImg = await uploadFileToS3(
+            img,
+            `${category._id.toString()}/${newItem._id.toString()}/${variantColor
+              .toLowerCase()
+              .replace(/\s+/g, "")}`
+          );
+          return uploadedImg; // Return the uploaded image information
+        })
+      );
+
+      const newVariant = new VariantModel({
+        variantProduct: new ObjectId(savedItem._id),
+        variantColor: variantColor,
+        variantSizes: variantSizes,
+        variantImages: uploadedImages,
+      });
+
+      await newVariant.save();
+    });
 
     await newItem.save();
 
@@ -319,65 +410,113 @@ export const updateItemController = async (req, res) => {
         .json(ApiResponse.error(error_code, error.message));
     }
 
-    // Prepare to handle images based on the itemVariants structure
-    let updatedVariants = value.itemVariants;
+    const existingVariants = await VariantModel.find({
+      variantProduct: result._id,
+    });
 
-    // Process existing images and determine which ones to delete
-    const existingVariants = result.itemVariants || [];
+    const updatedVariants = value.itemVariants;
+
     const deletedImages = [];
 
-    // Iterate through each variant to handle image updates
-    updatedVariants = await Promise.all(
-      updatedVariants.map(async (variant) => {
-        const existingVariant = existingVariants.find(
-          (v) => v.itemColor === variant.itemColor
-        );
-
-        // Get existing images for this color variant
-        const existingImages = existingVariant
-          ? existingVariant.images || []
-          : [];
-        const updatedImageKeys = variant.itemImages.map((img) => img.imgKey);
-
-        // Determine images to delete (not in the updated variant)
-        const variantDeletedImages = existingImages
-          .filter((img) => !updatedImageKeys.includes(img.imgKey))
-          .map((img) => img.imgKey);
-
-        if (variantDeletedImages.length > 0) {
-          deletedImages.push(...variantDeletedImages);
-        }
-
-        // Filter files based on the color property (e.g., file names include color)
-        const colorFiles = files.filter((file) =>
-          file.originalname
-            .toLowerCase()
-            .includes(variant.itemColor.toLowerCase().replace(/\s+/g, ""))
-        );
-
-        // Upload new images for this variant, if any
-        const newImages = await Promise.all(
-          colorFiles.map(async (img) => {
-            const uploadedImg = await uploadFileToS3(
-              img,
-              `${result.itemCategoryId.toString()}/${result._id.toString()}/${variant.itemColor
-                .toLowerCase()
-                .replace(/\s+/g, "")}`
-            );
-            return uploadedImg; // Return the uploaded image information
-          })
-        );
-
-        // Merge existing images (that are still valid) with new images
-        const updatedImageList = [...variant.itemImages, ...newImages];
-
-        // Return updated variant with merged images
-        return {
-          ...variant,
-          itemImages: updatedImageList,
-        };
-      })
+    // Identify deleted, existing, and new variants
+    const newAddedVariants = updatedVariants.filter(
+      (updatedItem) =>
+        !existingVariants.some(
+          (existingItem) =>
+            existingItem.variantColor === updatedItem.variantColor
+        )
     );
+
+    const existingUpdatedVariants = updatedVariants.filter((updatedItem) =>
+      existingVariants.some(
+        (existingItem) => existingItem.variantColor === updatedItem.variantColor
+      )
+    );
+
+    // Existing Updated Variants
+    if (existingUpdatedVariants.length > 0) {
+      await Promise.all(
+        existingUpdatedVariants.map(async (item) => {
+          const variant = await VariantModel.findById(new ObjectId(item._id));
+
+          // Get existing images for this color variant
+          const existingImages = variant.variantImages || [];
+
+          const updatedImageKeys = item.variantImages.map((img) => img.imgKey);
+
+          // Determine images to delete (not in the updated variant)
+          const variantDeletedImages = existingImages
+            .filter((img) => !updatedImageKeys.includes(img.imgKey))
+            .map((img) => img.imgKey);
+
+          if (variantDeletedImages.length > 0) {
+            deletedImages.push(...variantDeletedImages);
+          }
+
+          const colorFiles = files.filter((file) =>
+            file.originalname
+              .toLowerCase()
+              .includes(item.variantColor.toLowerCase().replace(/\s+/g, ""))
+          );
+
+          // Upload new images for this variant, if any
+          const newImages = await Promise.all(
+            colorFiles.map(async (img) => {
+              const uploadedImg = await uploadFileToS3(
+                img,
+                `${result.itemCategoryId.toString()}/${result._id.toString()}/${item.variantColor
+                  .toLowerCase()
+                  .replace(/\s+/g, "")}`
+              );
+              return uploadedImg; // Return the uploaded image information
+            })
+          );
+
+          const updatedImageList = [...item.variantImages, ...newImages];
+
+          variant.variantSizes = item.variantSizes;
+          variant.variantImages = updatedImageList;
+
+          await variant.save();
+        })
+      );
+    }
+
+    // Newly added variants
+    if (newAddedVariants.length > 0) {
+      await Promise.all(
+        newAddedVariants.map(async (item) => {
+          // Filter files based on the color property (e.g., file names include color)
+          const colorFiles = files.filter((file) =>
+            file.originalname
+              .toLowerCase()
+              .includes(item.variantColor.toLowerCase().replace(/\s+/g, ""))
+          );
+
+          // Upload new images for this variant, if any
+          const newImages = await Promise.all(
+            colorFiles.map(async (img) => {
+              const uploadedImg = await uploadFileToS3(
+                img,
+                `${result.itemCategoryId.toString()}/${result._id.toString()}/${item.variantColor
+                  .toLowerCase()
+                  .replace(/\s+/g, "")}`
+              );
+              return uploadedImg; // Return the uploaded image information
+            })
+          );
+
+          const newVariant = new VariantModel({
+            variantSizes: item.variantSizes,
+            variantColor: item.variantColor,
+            variantProduct: result._id,
+            variantImages: newImages,
+          });
+
+          await newVariant.save();
+        })
+      );
+    }
 
     // Delete images from S3 that were removed
     if (deletedImages.length > 0) {
@@ -385,14 +524,11 @@ export const updateItemController = async (req, res) => {
     }
 
     // Prepare the updated data with merged itemVariants
-    const updatedData = {
-      ...value,
-      itemVariants: updatedVariants,
-    };
+    delete value.itemVariants;
 
     await ItemModel.findByIdAndUpdate(
       result._id,
-      { $set: updatedData },
+      { $set: value },
       { new: true }
     );
 

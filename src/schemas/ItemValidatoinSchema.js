@@ -13,10 +13,10 @@ const sizeSchema = Joi.object({
 
 // Validation schema for each color variant of an item
 const variantSchema = Joi.object({
-  itemColor: Joi.string().required().messages({
+  variantColor: Joi.string().required().messages({
     "string.empty": "Color is required",
   }),
-  itemSizes: Joi.array().items(sizeSchema).min(1).required().messages({
+  variantSizes: Joi.array().items(sizeSchema).min(1).required().messages({
     "array.min": "At least one size is required for each color",
   }),
 });
@@ -28,6 +28,11 @@ export const itemValidationSchema = Joi.object({
   }),
   itemDescription: Joi.string().allow(""), // Optional description
   itemIsActive: Joi.boolean().default(true),
+  itemBasePrice: Joi.number().min(0).required().messages({
+    "number.min": "Item base price cannot be negative",
+    "number.base": "Item base price must be a number",
+    "any.required": "Item base price is required",
+  }),
   itemPrice: Joi.number().min(0).required().messages({
     "number.min": "Item price cannot be negative",
     "number.base": "Item price must be a number",

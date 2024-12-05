@@ -18,3 +18,5 @@ export const category_not_found = "Category not found";
 export const images_not_found = "Images required";
 export const item_not_found = "Item not found";
 export const item_quantity_not_enough = "Not enough stocks for ";
+
+export const order_not_found = "Order not found";

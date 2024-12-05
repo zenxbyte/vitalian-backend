@@ -14,6 +14,7 @@ const ItemSchema = new Schema(
     itemTitle: { type: String, required: true },
     itemDescription: { type: String, default: "" },
     itemIsActive: { type: Boolean, default: true },
+    itemBasePrice: { type: Number, required: true, min: 0, default: 0 },
     itemPrice: { type: Number, required: true, min: 0 },
     itemDiscount: { type: Number, default: 0 },
 
@@ -28,34 +29,11 @@ const ItemSchema = new Schema(
       modelSize: { type: String, default: null },
       washAndCare: { type: String, default: null },
     },
-
-    // Variations in color, images, and sizes
-    itemVariants: [
-      {
-        itemColor: { type: String, required: true },
-        itemImages: [
-          {
-            imgUrl: { type: String, default: null },
-            imgKey: { type: String, default: null },
-            _id: false,
-          },
-        ],
-        itemSizes: [
-          {
-            size: { type: String, required: true },
-            availability: { type: Boolean, default: true },
-            quantity: { type: Number, default: 0, min: 0 },
-            _id: false,
-          },
-        ],
-        _id: false,
-      },
-    ],
   },
   { timestamps: true }
 );
 
 // Create a model for the item
-const ItemModel = mongoose.model("Item", ItemSchema);
+const ItemModel = mongoose.model("item", ItemSchema);
 
 export default ItemModel;
