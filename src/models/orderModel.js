@@ -23,11 +23,13 @@ const Schema = mongoose.Schema;
 const OrderItemSchema = new Schema({
   _id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "item", // Reference to a item schema, if available
+    ref: "variant",
     required: true,
   },
+  code: { type: String, required: true },
   size: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
+  discount: { type: Number, required: true, min: 0 },
   totalPrice: { type: Number, required: true }, // Price for quantity * unit price
 });
 

@@ -4,20 +4,17 @@ import { ObjectId } from "mongodb";
 import { error_code, success_code } from "../constants/statusCodes.js";
 import ApiResponse from "../services/ApiResponse.js";
 import { orderCreateSchema } from "../schemas/createOrderSchema.js";
-import ItemModel from "../models/itemModel.js";
 import {
   item_quantity_not_enough,
+  order_not_found,
   success_message,
 } from "../constants/messageConstants.js";
 import OrderModel from "../models/orderModel.js";
-import {
-  calculateTotalValue,
-  generateOrderId,
-  isValidString,
-} from "../services/commonServices.js";
+import { generateOrderId, isValidString } from "../services/commonServices.js";
 import { ORDER_STATUS } from "../constants/orderStatus.js";
-import { PAYMENT_STATUS } from "../constants/paymentStatus.js";
+import { PAY_STATUS_PAID, PAYMENT_STATUS } from "../constants/paymentStatus.js";
 import { SORT_BY } from "../constants/sort-constants.js";
+import VariantModel from "../models/variantModel.js";
 
 // Create Order Public
 export const createOrderController = async (req, res) => {
@@ -33,9 +30,10 @@ export const createOrderController = async (req, res) => {
     const { items } = value;
 
     items.map(async (item) => {
-      const itemInfo = await ItemModel.findById(new ObjectId(item._id));
-      item._id = new ObjectId(item._id);
-      itemInfo.itemSizes.map((size) => {
+      const variantInfo = await VariantModel.findById(
+        new ObjectId(item._id)
+      ).populate("variantProduct");
+      variantInfo.variantSizes.map((size) => {
         if (item.size === size.size) {
           if (item.quantity > size.quantity) {
             return res
@@ -43,14 +41,16 @@ export const createOrderController = async (req, res) => {
               .json(
                 ApiResponse.error(
                   error_code,
-                  item_quantity_not_enough + itemInfo.itemTitle
+                  item_quantity_not_enough + item.code
                 )
               );
           } else {
+            size.quantity = size.quantity - item.quantity;
             return;
           }
         }
       });
+      await variantInfo.save();
     });
 
     const newOrder = new OrderModel({
@@ -129,7 +129,7 @@ export const getOrdersController = async (req, res) => {
     const count = await OrderModel.countDocuments(query);
 
     return res
-      .status(httpStatus.CREATED)
+      .status(httpStatus.OK)
       .json(
         ApiResponse.response(success_code, success_message, { data, count })
       );
@@ -164,10 +164,56 @@ export const getOrderCountController = async (req, res) => {
     const count = await OrderModel.countDocuments(query);
 
     return res
-      .status(httpStatus.CREATED)
+      .status(httpStatus.OK)
       .json(
         ApiResponse.response(success_code, success_message, { data, count })
       );
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+export const onPaymentSuccessController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await OrderModel.findById(new ObjectId(id));
+
+    if (!order) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(ApiResponse.error(error_code, order_not_found));
+    }
+
+    order.paymentDetails.paymentStatus = PAY_STATUS_PAID;
+
+    await order.save();
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, success_message));
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+export const onPaymentErrorController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await OrderModel.findByIdAndDelete(new ObjectId(id));
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, success_message));
   } catch (error) {
     console.log(error);
 

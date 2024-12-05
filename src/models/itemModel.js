@@ -34,6 +34,6 @@ const ItemSchema = new Schema(
 );
 
 // Create a model for the item
-const ItemModel = mongoose.model("Item", ItemSchema);
+const ItemModel = mongoose.model("item", ItemSchema);
 
 export default ItemModel;

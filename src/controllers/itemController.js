@@ -132,16 +132,49 @@ export const getItemsController = async (req, res) => {
       { $match: query },
       {
         $lookup: {
-          from: "categories", // Customer collection
+          from: "categories",
           as: "category",
           let: { categoryId: "$itemCategoryId" },
           pipeline: [
             {
               $match: {
-                $expr: { $eq: ["$_id", "$$categoryId"] }, // Match unit ID
+                $expr: { $eq: ["$_id", "$$categoryId"] },
                 ...(isValidString(filterByCollection) && {
                   catName: filterByCollection,
                 }),
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "variants",
+          as: "itemVariants",
+          let: { variantId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$variantProduct", "$$variantId"] },
+
+                ...(isValidString(filterbyColor) && {
+                  variantColor: filterbyColor,
+                }),
+                ...(isValidString(filterBySize) && {
+                  "variantSizes.size": filterBySize,
+                }),
+                ...(isValidString(filterByAvilability) &&
+                  filterByAvilability === "inStock" && {
+                    variantSizes: {
+                      $gt: [{ $sum: "$variantSizes.quantity" }, 0],
+                    },
+                  }),
+                ...(isValidString(filterByAvilability) &&
+                  filterByAvilability === "outOfStock" && {
+                    variantSizes: {
+                      $eq: [{ $sum: "$variantSizes.outOfStock" }, 0],
+                    },
+                  }),
               },
             },
           ],

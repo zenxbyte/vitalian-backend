@@ -18,9 +18,11 @@ import {
 } from "../constants/orderStatus.js";
 // Joi schema for OrderItem
 const orderItemSchema = Joi.object({
-  _id: Joi.string().required(), // Assuming itemId is a string representation of an ObjectId
+  _id: Joi.string().required(),
+  code: Joi.string().required(),
   size: Joi.string().required(),
   quantity: Joi.number().integer().min(1).required(),
+  discount: Joi.number().integer().min(1).required(),
   totalPrice: Joi.number().min(0).required(),
 });
 
