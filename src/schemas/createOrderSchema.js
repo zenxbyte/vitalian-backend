@@ -22,7 +22,7 @@ const orderItemSchema = Joi.object({
   code: Joi.string().required(),
   size: Joi.string().required(),
   quantity: Joi.number().integer().min(1).required(),
-  discount: Joi.number().integer().min(1).required(),
+  discount: Joi.number().integer().min(0).required(),
   totalPrice: Joi.number().min(0).required(),
 });
 
