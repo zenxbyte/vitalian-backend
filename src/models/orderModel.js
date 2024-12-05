@@ -29,7 +29,7 @@ const OrderItemSchema = new Schema({
   code: { type: String, required: true },
   size: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
-  discount: { type: Number, required: true, min: 0 },
+  discount: { type: Number, required: true },
   totalPrice: { type: Number, required: true }, // Price for quantity * unit price
 });
 
