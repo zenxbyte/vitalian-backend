@@ -129,5 +129,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# Google API Credentials
-api_credentials.json
+# Package-lock.json
+.package-lock.json

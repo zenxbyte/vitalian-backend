@@ -21,7 +21,7 @@ const Schema = mongoose.Schema;
 
 // Schema for individual order items
 const OrderItemSchema = new Schema({
-  _id: {
+  variant: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "variant",
     required: true,
@@ -30,7 +30,8 @@ const OrderItemSchema = new Schema({
   size: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
   discount: { type: Number, required: true, min: 0 },
-  totalPrice: { type: Number, required: true }, // Price for quantity * unit price
+  totalPrice: { type: Number, required: true },
+  _id: false,
 });
 
 // Main Order Schema
