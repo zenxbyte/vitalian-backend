@@ -15,6 +15,7 @@ import { ORDER_STATUS } from "../constants/orderStatus.js";
 import { PAY_STATUS_PAID, PAYMENT_STATUS } from "../constants/paymentStatus.js";
 import { SORT_BY } from "../constants/sort-constants.js";
 import VariantModel from "../models/variantModel.js";
+import { sendOrderConfirmedEmail } from "../services/emailServices.js";
 
 // Create Order Public
 export const createOrderController = async (req, res) => {
@@ -31,7 +32,7 @@ export const createOrderController = async (req, res) => {
 
     items.map(async (item) => {
       const variantInfo = await VariantModel.findById(
-        new ObjectId(item._id)
+        new ObjectId(item.variant)
       ).populate("variantProduct");
       variantInfo.variantSizes.map((size) => {
         if (item.size === size.size) {
@@ -74,6 +75,37 @@ export const createOrderController = async (req, res) => {
 
 // Update Order - Admin
 export const updateOrderController = async (req, res) => {};
+
+export const getOrderController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await OrderModel.findById(new ObjectId(id)).populate({
+      path: "items.variant",
+      select: "variantColor variantSizes variantImages variantProduct",
+      populate: {
+        path: "variantProduct",
+        select: "itemTitle itemDescription",
+      },
+    });
+
+    if (!order) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(ApiResponse.error(error_code, order_not_found));
+    }
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, success_message, order));
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
 
 // Get Orders - Filtered by order status - admin
 export const getOrdersController = async (req, res) => {
@@ -181,7 +213,14 @@ export const onPaymentSuccessController = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const order = await OrderModel.findById(new ObjectId(id));
+    const order = await OrderModel.findById(new ObjectId(id)).populate({
+      path: "items.variant",
+      select: "variantColor variantSizes variantImages variantProduct",
+      populate: {
+        path: "variantProduct",
+        select: "itemTitle itemDescription",
+      },
+    });
 
     if (!order) {
       return res
@@ -192,6 +231,8 @@ export const onPaymentSuccessController = async (req, res) => {
     order.paymentDetails.paymentStatus = PAY_STATUS_PAID;
 
     await order.save();
+
+    await sendOrderConfirmedEmail(order.customer.email, order);
 
     return res
       .status(httpStatus.OK)

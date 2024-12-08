@@ -15,3 +15,14 @@ export const generateOrderId = () => {
   const datePart = new Date().toISOString().split("T")[0].replace(/-/g, "");
   return `ORD-${datePart}-${randomId()}`;
 };
+
+export const formatCurrency = (amount) => {
+  const formattedAmount = amount
+    .toLocaleString("en-IN", {
+      style: "currency",
+      currency: "LKR",
+      minimumFractionDigits: 2,
+    })
+    .replace("LKR", "Rs.");
+  return formattedAmount;
+};
