@@ -12,6 +12,8 @@ export const forbidden = "Access permission needed";
 export const incorrect_email = "Incorrect email";
 export const incorrect_password_email = "Incorrect password or email";
 export const user_not_found = "User not found";
+export const user_exists = "User exists";
+export const cannot_delete_current_user = "Action not permitted";
 
 export const category_not_found = "Category not found";
 
