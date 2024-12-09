@@ -11,7 +11,10 @@ import {
 } from "../constants/messageConstants.js";
 import OrderModel from "../models/orderModel.js";
 import { generateOrderId, isValidString } from "../services/commonServices.js";
-import { ORDER_STATUS } from "../constants/orderStatus.js";
+import {
+  ORDER_STATUS,
+  ORDER_STATUS_PENDING,
+} from "../constants/orderStatus.js";
 import { PAY_STATUS_PAID, PAYMENT_STATUS } from "../constants/paymentStatus.js";
 import { SORT_BY } from "../constants/sort-constants.js";
 import VariantModel from "../models/variantModel.js";
@@ -209,6 +212,7 @@ export const getOrderCountController = async (req, res) => {
   }
 };
 
+// Payment Gateway Success Endpoint
 export const onPaymentSuccessController = async (req, res) => {
   try {
     const { id } = req.params;
@@ -246,6 +250,7 @@ export const onPaymentSuccessController = async (req, res) => {
   }
 };
 
+// Payment Gateway Error Endpoint
 export const onPaymentErrorController = async (req, res) => {
   try {
     const { id } = req.params;
@@ -255,6 +260,50 @@ export const onPaymentErrorController = async (req, res) => {
     return res
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message));
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Recent Transactions - limit 6
+export const recentTransactionsController = async (req, res) => {
+  try {
+    const orders = await OrderModel.find({
+      "paymentDetails.paymentStatus": PAY_STATUS_PAID,
+    })
+      .sort({ updatedAt: -1 })
+      .limit(6);
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, success_message, orders));
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Recent pending Orders limit 5 and total pending count
+export const PendingOrdersController = async (req, res) => {
+  try {
+    const orders = await OrderModel.find({ orderStatus: ORDER_STATUS_PENDING })
+      .sort({ updatedAt: -1 })
+      .limit(5);
+    const count = await OrderModel.countDocuments({
+      orderStatus: ORDER_STATUS_PENDING,
+    });
+    return res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(success_code, success_message, { orders, count })
+      );
   } catch (error) {
     console.log(error);
 
