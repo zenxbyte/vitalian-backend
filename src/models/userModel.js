@@ -25,6 +25,7 @@ const userSchema = new Schema({
   userRole: {
     type: String,
     enum: [ADMIN_ROLE],
+    default: ADMIN_ROLE,
     required: true,
   },
   userAccessToken: {
