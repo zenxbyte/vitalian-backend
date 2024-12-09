@@ -6,6 +6,8 @@ import {
   getOrdersController,
   onPaymentErrorController,
   onPaymentSuccessController,
+  PendingOrdersController,
+  recentTransactionsController,
 } from "../controllers/orderController.js";
 
 const orderRoutes = express.Router();
@@ -16,5 +18,7 @@ orderRoutes.get("/auth/filter", getOrdersController);
 orderRoutes.get("/auth/stat-count", getOrderCountController);
 orderRoutes.put("/noAuth/onSuccess/:id", onPaymentSuccessController);
 orderRoutes.put("/noAuth/onError/:id", onPaymentErrorController);
+orderRoutes.get("/auth/transactions", recentTransactionsController);
+orderRoutes.get("/auth/recent-orders", PendingOrdersController);
 
 export default orderRoutes;
