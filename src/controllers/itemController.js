@@ -33,7 +33,7 @@ export const getItemsController = async (req, res) => {
     const filterByPriceMax = parseInt(req.query.priceMax);
     const sortBy = req.query.sort;
 
-    let query = {};
+    let query = { itemIsActive: true };
 
     if (filterByPriceMin && filterByPriceMax) {
       query["itemPrice"] = {
@@ -122,6 +122,11 @@ export const getItemsController = async (req, res) => {
       },
       {
         $unwind: "$category",
+      },
+      {
+        $match: {
+          itemVariants: { $ne: [] }, // Filters out documents where `itemVariants` is an empty array
+        },
       },
       { $sort: sort },
       { $skip: skip },
