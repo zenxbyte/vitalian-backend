@@ -123,6 +123,11 @@ export const getItemsController = async (req, res) => {
       {
         $unwind: "$category",
       },
+      {
+        $match: {
+          itemVariants: { $ne: [] }, // Filters out documents where `itemVariants` is an empty array
+        },
+      },
       { $sort: sort },
       { $skip: skip },
       { $limit: limit },
