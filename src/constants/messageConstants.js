@@ -22,3 +22,5 @@ export const item_not_found = "Item not found";
 export const item_quantity_not_enough = "Not enough stocks for ";
 
 export const order_not_found = "Order not found";
+
+export const message_sent = "Message sent successful";

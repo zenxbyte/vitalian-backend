@@ -267,6 +267,17 @@ export const getItemController = async (req, res) => {
       },
       {
         $lookup: {
+          from: "categories",
+          localField: "itemCategoryId",
+          foreignField: "_id",
+          as: "itemCategoryId",
+        },
+      },
+      {
+        $unwind: "$itemCategoryId",
+      },
+      {
+        $lookup: {
           from: "variants",
           let: { productId: "$_id" }, // Define variables for use in the pipeline
           pipeline: [

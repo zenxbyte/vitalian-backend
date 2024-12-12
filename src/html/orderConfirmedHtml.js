@@ -35,15 +35,6 @@ export const orderConfirmedHtml = (data) => {
             ${itemRows}
           </tbody>
         </table>
-        <p>To view your order details, click the link below:</p>
-        <p>
-            <a 
-                href="${process.env.PUBLIC_APP_URL}track-order?id=${data._id}" 
-                style="color: #0066cc; text-decoration: none;"
-            >
-                View Order Details
-            </a>
-        </p>
         <p>If you have any questions, feel free to contact us.</p>
         <p>Thank you for shopping with us!</p>
       </div>
