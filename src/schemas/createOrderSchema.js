@@ -38,8 +38,15 @@ export const orderCreateSchema = Joi.object({
   deliveryInfo: Joi.object({
     address: Joi.string().required(),
     company: Joi.string().allow(null, ""), // Allow null or empty string for optional fields
-    city: Joi.string().required(),
-    district: Joi.string().required(),
+    city: Joi.object({
+      city_id: Joi.string().required(),
+      city_name: Joi.string().required(),
+    }),
+
+    district: Joi.object({
+      district_id: Joi.string().required(),
+      district_name: Joi.string().required(),
+    }),
     postalCode: Joi.string().required(),
     country: Joi.string().required(),
   }).required(),

@@ -47,8 +47,14 @@ const OrderSchema = new Schema(
     deliveryInfo: {
       address: { type: String, required: true },
       company: { type: String, default: null },
-      city: { type: String, required: true },
-      district: { type: String, required: true },
+      city: {
+        city_id: { type: String, required: true },
+        city_name: { type: String, required: true },
+      },
+      district: {
+        district_id: { type: String, required: true },
+        district_name: { type: String, required: true },
+      },
       postalCode: { type: String, required: true },
       country: { type: String, required: true },
     },
@@ -72,7 +78,7 @@ const OrderSchema = new Schema(
       },
     },
     items: [OrderItemSchema], // Array of order items
-    orderDeliveryCharges: { type: Number, required: true },
+    orderDeliveryCharges: { type: Number, required: true, default: 0 },
     orderTotal: { type: Number, required: true }, // Total amount for the order
     orderStatus: {
       type: String,
