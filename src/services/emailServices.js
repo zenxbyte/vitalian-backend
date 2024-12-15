@@ -20,6 +20,13 @@ export const sendOrderConfirmedEmail = async (to, data) => {
       to, // Recipient's email address
       subject: "Order Confirmed", // Subject line
       html: orderConfirmedHtml(data), // HTML body
+      attachments: [
+        {
+          filename: "VITALIAN-LOGO.png", // Image filename
+          path: "src/assets/VITALIAN-LOGO.png", // Local path to the image file
+          cid: "logoImage", // Unique Content ID
+        },
+      ],
     };
 
     // Send the email

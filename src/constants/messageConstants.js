@@ -9,6 +9,9 @@ export const success_message = "Success";
 
 export const forbidden = "Access permission needed";
 
+export const server_error = "Internal server error";
+export const id_not_found = "Id not found";
+
 export const incorrect_email = "Incorrect email";
 export const incorrect_password_email = "Incorrect password or email";
 export const user_not_found = "User not found";
