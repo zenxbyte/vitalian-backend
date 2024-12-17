@@ -1,24 +1,39 @@
 import httpStatus from "http-status";
 import { ObjectId } from "mongodb";
 
-import { error_code, success_code } from "../constants/statusCodes.js";
+import {
+  error_code,
+  info_code,
+  success_code,
+} from "../constants/statusCodes.js";
 import ApiResponse from "../services/ApiResponse.js";
 import { orderCreateSchema } from "../schemas/createOrderSchema.js";
 import {
+  delivery_orders_created,
   item_quantity_not_enough,
   order_not_found,
+  packed_orders_not_found,
+  pick_request_created_already,
+  pickup_items_not_found,
   success_message,
 } from "../constants/messageConstants.js";
 import OrderModel from "../models/orderModel.js";
 import { generateOrderId, isValidString } from "../services/commonServices.js";
 import {
+  ORDER_DELIVERY_CREATED,
   ORDER_STATUS,
+  ORDER_STATUS_PACKED,
   ORDER_STATUS_PENDING,
+  ORDER_STATUS_PROCESSING,
+  ORDER_STATUS_WAITING,
 } from "../constants/orderStatus.js";
 import { PAY_STATUS_PAID, PAYMENT_STATUS } from "../constants/paymentStatus.js";
 import { SORT_BY } from "../constants/sort-constants.js";
 import VariantModel from "../models/variantModel.js";
 import { sendOrderConfirmedEmail } from "../services/emailServices.js";
+import { statusUpdateSchema } from "../schemas/statusUpdateSchema.js";
+import DeliveryLogModel from "../models/deliveryLogModel.js";
+import { createPickupSchema } from "../schemas/createPickUpSchema.js";
 
 // Create Order Public
 export const createOrderController = async (req, res) => {
@@ -200,9 +215,7 @@ export const getOrderCountController = async (req, res) => {
 
     return res
       .status(httpStatus.OK)
-      .json(
-        ApiResponse.response(success_code, success_message, { data, count })
-      );
+      .json(ApiResponse.response(success_code, success_message, count));
   } catch (error) {
     console.log(error);
 
@@ -307,6 +320,175 @@ export const PendingOrdersController = async (req, res) => {
   } catch (error) {
     console.log(error);
 
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Update order status - Multiple
+export const updateOrderStatusController = async (req, res) => {
+  try {
+    const { error, value } = statusUpdateSchema.validate(req.body);
+
+    if (error) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(ApiResponse.error(error_code, error.message));
+    }
+
+    const { currentStatus, listOfIds } = value;
+
+    let newStatus;
+
+    switch (currentStatus) {
+      case ORDER_STATUS_PENDING:
+        newStatus = ORDER_STATUS_PROCESSING;
+        break;
+      case ORDER_STATUS_PROCESSING:
+        newStatus = ORDER_STATUS_PACKED;
+        break;
+      default:
+        newStatus = ORDER_STATUS_PROCESSING;
+        break;
+    }
+
+    const result = await OrderModel.updateMany(
+      {
+        _id: { $in: listOfIds.map((id) => new ObjectId(id)) }, // Convert IDs to ObjectId
+        orderStatus: currentStatus, // Match current status
+      },
+      { $set: { orderStatus: newStatus } } // Update to the new status
+    );
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(
+          success_code,
+          `${result.modifiedCount} items updated successfully.`
+        )
+      );
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Create delivery orders - Multiple - Koombiyo
+export const createDeliveryOrdersController = async (req, res) => {
+  try {
+    const list = await OrderModel.find({
+      orderStatus: ORDER_STATUS_PACKED,
+    });
+
+    if (list.length === 0) {
+      return res
+        .status(httpStatus.OK)
+        .json(ApiResponse.response(info_code, packed_orders_not_found));
+    }
+
+    // Add waybill and complete flow
+    list.forEach(async (order) => {
+      const deliveryOrder = {
+        apikey: process.env.KOOM_API_KEY,
+        orderWaybillid: "",
+        orderNo: order.orderId,
+        receiverName: `${order.customer.firstName} ${order.customer.lastName}`,
+        receiverStreet: order.deliveryInfo.address,
+        receiverDistrict: order.deliveryInfo.district.district_id,
+        receiverCity: order.deliveryInfo.city.city_id,
+        receiverPhone: order.customer.phone,
+        description: "",
+        spclNote: "",
+        getCod: "",
+      };
+
+      //order.orderWayBillId = ''
+      order.orderStatus = ORDER_DELIVERY_CREATED;
+      await order.save();
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, delivery_orders_created));
+  } catch (error) {
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Create pick up packages - Awaiting Status - Koombiyo
+export const createPickUpOrdersController = async (req, res) => {
+  try {
+    const { error, value } = createPickupSchema.validate(req.body);
+
+    if (error) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(ApiResponse.error(error_code, error.message));
+    }
+
+    const date = new Date();
+    const isLogged = await DeliveryLogModel.findOne({
+      createdAt: `${date.getDate()}-${
+        date.getMonth() + 1
+      }-${date.getFullYear()}`,
+    });
+
+    if (isLogged) {
+      return res
+        .status(httpStatus.OK)
+        .json(ApiResponse.response(info_code, pick_request_created_already));
+    }
+
+    const pickUpItems = await OrderModel.find({
+      orderStatus: ORDER_DELIVERY_CREATED,
+    });
+
+    if (pickUpItems.length === 0) {
+      return res
+        .status(httpStatus.OK)
+        .json(ApiResponse.response(info_code, pickup_items_not_found));
+    }
+
+    const newLog = new DeliveryLogModel({
+      ...value,
+      qty: pickUpItems.length,
+    });
+
+    await newLog.save();
+
+    for (const item of pickUpItems) {
+      item.orderStatus = ORDER_STATUS_WAITING;
+      await item.save();
+    }
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, success_message));
+  } catch (error) {
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Recent Logs of pick deliveries
+export const recentPickupOrdersController = async (req, res) => {
+  try {
+    const result = await DeliveryLogModel.find()
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, success_message, result));
+  } catch (error) {
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));

@@ -27,3 +27,8 @@ export const item_quantity_not_enough = "Not enough stocks for ";
 export const order_not_found = "Order not found";
 
 export const message_sent = "Message sent successful";
+export const delivery_orders_created = "Delivery orders created successfuly";
+export const packed_orders_not_found = "Packed orders not found";
+export const pickup_items_not_found = "No items to create pickup request";
+export const pick_request_created_already =
+  "Already created a pick up request for today";
