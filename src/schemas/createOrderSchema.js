@@ -9,13 +9,7 @@ import {
   PAY_STATUS_PENDING,
   PAY_STATUS_REFUNDED,
 } from "../constants/paymentStatus.js";
-import {
-  ORDER_STATUS_CANCELED,
-  ORDER_STATUS_DELIVERED,
-  ORDER_STATUS_PENDING,
-  ORDER_STATUS_PROCESSING,
-  ORDER_STATUS_SHIPPED,
-} from "../constants/orderStatus.js";
+import { ORDER_STATUS_PENDING } from "../constants/orderStatus.js";
 // Joi schema for OrderItem
 const orderItemSchema = Joi.object({
   variant: Joi.string().required(),
@@ -70,12 +64,6 @@ export const orderCreateSchema = Joi.object({
   orderTotal: Joi.number().min(0).required(), // Total must be at least 0
 
   orderStatus: Joi.string()
-    .valid(
-      ORDER_STATUS_PENDING,
-      ORDER_STATUS_PROCESSING,
-      ORDER_STATUS_SHIPPED,
-      ORDER_STATUS_DELIVERED,
-      ORDER_STATUS_CANCELED
-    )
+    .valid(ORDER_STATUS_PENDING)
     .default(ORDER_STATUS_PENDING),
 });

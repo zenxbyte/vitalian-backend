@@ -10,11 +10,8 @@ import {
   PAY_STATUS_REFUNDED,
 } from "../constants/paymentStatus.js";
 import {
-  ORDER_STATUS_CANCELED,
-  ORDER_STATUS_DELIVERED,
+  ORDER_STATUS,
   ORDER_STATUS_PENDING,
-  ORDER_STATUS_PROCESSING,
-  ORDER_STATUS_SHIPPED,
 } from "../constants/orderStatus.js";
 
 const Schema = mongoose.Schema;
@@ -38,6 +35,7 @@ const OrderItemSchema = new Schema({
 const OrderSchema = new Schema(
   {
     orderId: { type: String, required: true },
+    orderWayBillId: { type: String, default: null },
     customer: {
       firstName: { type: String, required: true },
       lastName: { type: String, required: true },
@@ -82,13 +80,7 @@ const OrderSchema = new Schema(
     orderTotal: { type: Number, required: true }, // Total amount for the order
     orderStatus: {
       type: String,
-      enum: [
-        ORDER_STATUS_PENDING,
-        ORDER_STATUS_PROCESSING,
-        ORDER_STATUS_SHIPPED,
-        ORDER_STATUS_DELIVERED,
-        ORDER_STATUS_CANCELED,
-      ],
+      enum: ORDER_STATUS,
       default: ORDER_STATUS_PENDING,
     },
     orderDeliveryId: { type: String, default: null },
