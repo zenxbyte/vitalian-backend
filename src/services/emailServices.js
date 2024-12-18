@@ -23,7 +23,7 @@ export const sendOrderConfirmedEmail = async (to, data) => {
       attachments: [
         {
           filename: "VITALIAN-LOGO.png", // Image filename
-          path: "src/assets/VITALIAN-LOGO.png", // Local path to the image file
+          path: process.env.RELATIVE_PATH + "/assets/VITALIAN-LOGO.png", // Local path to the image file
           cid: "logoImage", // Unique Content ID
         },
       ],
