@@ -50,6 +50,10 @@ export const itemUpdateSchema = Joi.object({
   itemDiscount: Joi.number().min(0).default(0).messages({
     "number.min": "Item discount cannot be negative",
   }),
+  itemSizeChart: Joi.object({
+    imgUrl: Joi.string().allow(null),
+    imgKey: Joi.string().allow(null),
+  }),
   itemVariants: Joi.array().items(variantSchema).min(1).required().messages({
     "array.min": "At least one item variant is required",
   }),

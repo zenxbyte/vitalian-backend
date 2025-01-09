@@ -17,7 +17,10 @@ const ItemSchema = new Schema(
     itemBasePrice: { type: Number, required: true, min: 0, default: 0 },
     itemPrice: { type: Number, required: true, min: 0 },
     itemDiscount: { type: Number, default: 0 },
-
+    itemSizeChart: {
+      imgUrl: { type: String, default: null },
+      imgKey: { type: String, default: null },
+    },
     // Item other information (common to all variants)
     itemInformation: {
       material: { type: String, default: null },

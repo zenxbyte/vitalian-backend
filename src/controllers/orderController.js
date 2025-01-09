@@ -11,6 +11,9 @@ import { orderCreateSchema } from "../schemas/createOrderSchema.js";
 import {
   delivery_orders_created,
   item_quantity_not_enough,
+  order_already_paid,
+  order_cancelled_successfuly,
+  order_cannot_cancel,
   order_not_found,
   packed_orders_not_found,
   pick_request_created_already,
@@ -22,6 +25,9 @@ import { generateOrderId, isValidString } from "../services/commonServices.js";
 import {
   ORDER_DELIVERY_CREATED,
   ORDER_STATUS,
+  ORDER_STATUS_CANCELED,
+  ORDER_STATUS_DELIVERED,
+  ORDER_STATUS_OUT_DELIVERY,
   ORDER_STATUS_PACKED,
   ORDER_STATUS_PENDING,
   ORDER_STATUS_PROCESSING,
@@ -34,6 +40,7 @@ import { sendOrderConfirmedEmail } from "../services/emailServices.js";
 import { statusUpdateSchema } from "../schemas/statusUpdateSchema.js";
 import DeliveryLogModel from "../models/deliveryLogModel.js";
 import { createPickupSchema } from "../schemas/createPickUpSchema.js";
+import { paymentStatusUpdateSchema } from "../schemas/paymentStatusSchema.js";
 
 // Create Order Public
 export const createOrderController = async (req, res) => {
@@ -91,9 +98,7 @@ export const createOrderController = async (req, res) => {
   }
 };
 
-// Update Order - Admin
-export const updateOrderController = async (req, res) => {};
-
+// Get Order Details
 export const getOrderController = async (req, res) => {
   try {
     const { id } = req.params;
@@ -348,6 +353,12 @@ export const updateOrderStatusController = async (req, res) => {
       case ORDER_STATUS_PROCESSING:
         newStatus = ORDER_STATUS_PACKED;
         break;
+      case ORDER_STATUS_WAITING:
+        newStatus = ORDER_STATUS_OUT_DELIVERY;
+        break;
+      case ORDER_STATUS_OUT_DELIVERY:
+        newStatus = ORDER_STATUS_DELIVERED;
+        break;
       default:
         newStatus = ORDER_STATUS_PROCESSING;
         break;
@@ -488,6 +499,78 @@ export const recentPickupOrdersController = async (req, res) => {
     return res
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message, result));
+  } catch (error) {
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Cancel Order Controller
+export const cancelOrderController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await OrderModel.findOne(new ObjectId(id));
+
+    if (!result) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(ApiResponse.error(error_code, order_not_found));
+    }
+
+    if (result.orderStatus === ORDER_STATUS_DELIVERED) {
+      return res
+        .status(httpStatus.PRECONDITION_FAILED)
+        .json(ApiResponse.error(error_code, order_cannot_cancel));
+    }
+
+    result.orderStatus = ORDER_STATUS_CANCELED;
+    await result.save();
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, order_cancelled_successfuly));
+  } catch (error) {
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Update payment status controller
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { error, value } = paymentStatusUpdateSchema.validate(req.body);
+
+    if (error) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(ApiResponse.error(error_code, error.message));
+    }
+
+    const { id, newStatus } = value;
+
+    const order = await OrderModel.findOne(new ObjectId(id));
+
+    if (!order) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(ApiResponse.error(error_code, order_not_found));
+    }
+
+    if (order.paymentDetails.paymentStatus === PAY_STATUS_PAID) {
+      return res
+        .status(httpStatus.PRECONDITION_FAILED)
+        .json(ApiResponse.error(error_code, order_already_paid));
+    }
+
+    order.paymentDetails.paymentStatus = newStatus;
+    await order.save();
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(success_code, success_message));
   } catch (error) {
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
