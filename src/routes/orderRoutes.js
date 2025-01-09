@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  cancelOrderController,
   createDeliveryOrdersController,
   createOrderController,
   createPickUpOrdersController,
@@ -12,6 +13,7 @@ import {
   recentPickupOrdersController,
   recentTransactionsController,
   updateOrderStatusController,
+  updatePaymentStatus,
 } from "../controllers/orderController.js";
 
 const orderRoutes = express.Router();
@@ -28,5 +30,7 @@ orderRoutes.put("/auth/update-status", updateOrderStatusController);
 orderRoutes.get("/auth/create-delivery-orders", createDeliveryOrdersController);
 orderRoutes.post("/auth/request-pickup", createPickUpOrdersController);
 orderRoutes.get("/auth/recent-pickup-rqsts", recentPickupOrdersController);
+orderRoutes.post("/auth/cancel-order/:id", cancelOrderController);
+orderRoutes.post("/auth/update-payment-status", updatePaymentStatus);
 
 export default orderRoutes;

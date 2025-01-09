@@ -11,7 +11,11 @@ import {
 } from "../constants/messageConstants.js";
 import { itemValidationSchema } from "../schemas/ItemValidatoinSchema.js";
 import ItemModel from "../models/itemModel.js";
-import { deleteImagesFromS3, uploadFileToS3 } from "../middlewares/upload.js";
+import {
+  deleteImageFromS3,
+  deleteImagesFromS3,
+  uploadFileToS3,
+} from "../middlewares/upload.js";
 import categoryModel from "../models/categoryModel.js";
 import { itemUpdateSchema } from "../schemas/itemUpdateSchema.js";
 import { isValidString } from "../services/commonServices.js";
@@ -323,12 +327,13 @@ export const getItemController = async (req, res) => {
 export const createItemController = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!req.files || req.files.length === 0) {
+    if (!req.files["file"] || req.files["file"].length === 0) {
       return res
         .status(httpStatus.PRECONDITION_FAILED)
         .json(ApiResponse.response(error_code, images_not_found));
     }
-    const files = req.files;
+    const files = req.files["file"];
+    const chartFile = req.files["chart"];
     const formdata = JSON.parse(req.body.data);
     const { error, value } = itemValidationSchema.validate(formdata);
 
@@ -358,6 +363,23 @@ export const createItemController = async (req, res) => {
 
     const savedItem = await newItem.save();
 
+    let itemSizeChart = {
+      imgUrl: null,
+      imgKey: null,
+    };
+
+    if (chartFile) {
+      const uploadedSizeChart = await uploadFileToS3(
+        chartFile[0],
+        `${category._id.toString()}/${savedItem._id.toString()}/${
+          chartFile[0].originalname
+        }`
+      );
+
+      itemSizeChart.imgKey = uploadedSizeChart.imgKey;
+      itemSizeChart.imgUrl = uploadedSizeChart.imgUrl;
+    }
+
     value.itemVariants.map(async (variant) => {
       const { variantColor, variantSizes } = variant;
 
@@ -373,7 +395,7 @@ export const createItemController = async (req, res) => {
         colorFiles.map(async (img) => {
           const uploadedImg = await uploadFileToS3(
             img,
-            `${category._id.toString()}/${newItem._id.toString()}/${variantColor
+            `${category._id.toString()}/${savedItem._id.toString()}/${variantColor
               .toLowerCase()
               .replace(/\s+/g, "")}`
           );
@@ -391,7 +413,9 @@ export const createItemController = async (req, res) => {
       await newVariant.save();
     });
 
-    await newItem.save();
+    savedItem.itemSizeChart = itemSizeChart;
+
+    await savedItem.save();
 
     return res
       .status(httpStatus.OK)
@@ -415,7 +439,8 @@ export const updateItemController = async (req, res) => {
         .json(ApiResponse.response(error_code, item_not_found));
     }
 
-    const files = req.files;
+    const files = req.files["file"];
+    const chartFile = req.files["chart"];
     const formdata = JSON.parse(req.body.data);
 
     const { error, value } = itemUpdateSchema.validate(formdata);
@@ -425,6 +450,8 @@ export const updateItemController = async (req, res) => {
         .status(httpStatus.BAD_REQUEST)
         .json(ApiResponse.error(error_code, error.message));
     }
+
+    const existingItem = await ItemModel.findById(new ObjectId());
 
     const existingVariants = await VariantModel.find({
       variantProduct: result._id,
@@ -469,29 +496,32 @@ export const updateItemController = async (req, res) => {
             deletedImages.push(...variantDeletedImages);
           }
 
-          const colorFiles = files.filter((file) =>
-            file.originalname
-              .toLowerCase()
-              .includes(item.variantColor.toLowerCase().replace(/\s+/g, ""))
-          );
+          if (files) {
+            const colorFiles = files.filter((file) =>
+              file.originalname
+                .toLowerCase()
+                .includes(item.variantColor.toLowerCase().replace(/\s+/g, ""))
+            );
 
-          // Upload new images for this variant, if any
-          const newImages = await Promise.all(
-            colorFiles.map(async (img) => {
-              const uploadedImg = await uploadFileToS3(
-                img,
-                `${result.itemCategoryId.toString()}/${result._id.toString()}/${item.variantColor
-                  .toLowerCase()
-                  .replace(/\s+/g, "")}`
-              );
-              return uploadedImg; // Return the uploaded image information
-            })
-          );
+            // Upload new images for this variant, if any
+            const newImages = await Promise.all(
+              colorFiles.map(async (img) => {
+                const uploadedImg = await uploadFileToS3(
+                  img,
+                  `${result.itemCategoryId.toString()}/${result._id.toString()}/${item.variantColor
+                    .toLowerCase()
+                    .replace(/\s+/g, "")}`
+                );
+                return uploadedImg; // Return the uploaded image information
+              })
+            );
 
-          const updatedImageList = [...item.variantImages, ...newImages];
+            const updatedImageList = [...item.variantImages, ...newImages];
+
+            variant.variantImages = updatedImageList;
+          }
 
           variant.variantSizes = item.variantSizes;
-          variant.variantImages = updatedImageList;
 
           await variant.save();
         })
@@ -538,6 +568,29 @@ export const updateItemController = async (req, res) => {
     if (deletedImages.length > 0) {
       await deleteImagesFromS3(deletedImages);
     }
+
+    let itemSizeChart = {
+      imgUrl: null,
+      imgKey: null,
+    };
+
+    if (!value.itemSizeChart?.imgKey) {
+      await deleteImageFromS3(result.itemSizeChart.imgKey);
+    }
+
+    if (chartFile) {
+      const uploadedSizeChart = await uploadFileToS3(
+        chartFile[0],
+        `${result.itemCategoryId.toString()}/${result._id.toString()}/${
+          chartFile[0].originalname
+        }`
+      );
+
+      itemSizeChart.imgKey = uploadedSizeChart.imgKey;
+      itemSizeChart.imgUrl = uploadedSizeChart.imgUrl;
+    }
+
+    value.itemSizeChart = itemSizeChart;
 
     // Prepare the updated data with merged itemVariants
     delete value.itemVariants;

@@ -14,8 +14,22 @@ const itemRoutes = express.Router();
 itemRoutes.get("/noAuth/items", getItemsController);
 itemRoutes.get("/noAuth/details/:id", getItemController);
 itemRoutes.get("/noAuth/by-category/:id", getItemsByCategoryController);
-itemRoutes.post("/auth/create/:id", upload.array("file"), createItemController);
-itemRoutes.put("/auth/update/:id", upload.array("file"), updateItemController);
+itemRoutes.post(
+  "/auth/create/:id",
+  upload.fields([
+    { name: "file", maxCount: 10 },
+    { name: "chart", maxCount: 1 },
+  ]),
+  createItemController
+);
+itemRoutes.put(
+  "/auth/update/:id",
+  upload.fields([
+    { name: "file", maxCount: 10 },
+    { name: "chart", maxCount: 1 },
+  ]),
+  updateItemController
+);
 itemRoutes.get("/auth/low-stock", getLowStockItemsController);
 
 export default itemRoutes;

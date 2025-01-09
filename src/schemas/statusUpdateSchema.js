@@ -1,12 +1,19 @@
 import Joi from "joi";
 import {
+  ORDER_STATUS_OUT_DELIVERY,
   ORDER_STATUS_PENDING,
   ORDER_STATUS_PROCESSING,
+  ORDER_STATUS_WAITING,
 } from "../constants/orderStatus.js";
 
 export const statusUpdateSchema = Joi.object({
   currentStatus: Joi.string()
-    .valid(ORDER_STATUS_PENDING, ORDER_STATUS_PROCESSING)
+    .valid(
+      ORDER_STATUS_PENDING,
+      ORDER_STATUS_PROCESSING,
+      ORDER_STATUS_WAITING,
+      ORDER_STATUS_OUT_DELIVERY
+    )
     .required()
     .messages({
       "string.base": "Current status must be a string.",
