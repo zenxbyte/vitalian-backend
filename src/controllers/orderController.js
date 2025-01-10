@@ -41,6 +41,7 @@ import { statusUpdateSchema } from "../schemas/statusUpdateSchema.js";
 import DeliveryLogModel from "../models/deliveryLogModel.js";
 import { createPickupSchema } from "../schemas/createPickUpSchema.js";
 import { paymentStatusUpdateSchema } from "../schemas/paymentStatusSchema.js";
+import { PAY_ON_DELIVER } from "../constants/paymentMethods.js";
 
 // Create Order Public
 export const createOrderController = async (req, res) => {
@@ -86,12 +87,22 @@ export const createOrderController = async (req, res) => {
 
     const savedOrder = await newOrder.save();
 
+    if (savedOrder.paymentDetails.method === PAY_ON_DELIVER) {
+      const order = await OrderModel.findById(savedOrder._id).populate({
+        path: "items.variant",
+        select: "variantColor variantSizes variantImages variantProduct",
+        populate: {
+          path: "variantProduct",
+          select: "itemTitle itemDescription",
+        },
+      });
+      await sendOrderConfirmedEmail(order.customer.email, order);
+    }
+
     return res
       .status(httpStatus.CREATED)
       .json(ApiResponse.response(success_code, success_message, savedOrder));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -122,8 +133,6 @@ export const getOrderController = async (req, res) => {
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message, order));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -189,8 +198,6 @@ export const getOrdersController = async (req, res) => {
         ApiResponse.response(success_code, success_message, { data, count })
       );
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -222,8 +229,6 @@ export const getOrderCountController = async (req, res) => {
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message, count));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -252,16 +257,14 @@ export const onPaymentSuccessController = async (req, res) => {
 
     order.paymentDetails.paymentStatus = PAY_STATUS_PAID;
 
-    await order.save();
+    const savedOrder = await order.save();
 
-    await sendOrderConfirmedEmail(order.customer.email, order);
+    await sendOrderConfirmedEmail(savedOrder.customer.email, savedOrder);
 
     return res
       .status(httpStatus.OK)
-      .json(ApiResponse.response(success_code, success_message));
+      .json(ApiResponse.response(success_code, success_message, savedOrder));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -279,8 +282,6 @@ export const onPaymentErrorController = async (req, res) => {
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -300,8 +301,6 @@ export const recentTransactionsController = async (req, res) => {
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message, orders));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -323,8 +322,6 @@ export const PendingOrdersController = async (req, res) => {
         ApiResponse.response(success_code, success_message, { orders, count })
       );
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -381,8 +378,6 @@ export const updateOrderStatusController = async (req, res) => {
         )
       );
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
