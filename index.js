@@ -48,7 +48,7 @@ db.once("connected", () => {
   console.log("Connected to MongoDB");
 
   app.listen(port, () => {
-    //remakeCategories();
+    createDefaultUser();
     console.log(`Server is running at http://localhost:${port}`);
   });
 });
