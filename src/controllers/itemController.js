@@ -206,8 +206,6 @@ export const getItemsController = async (req, res) => {
       })
     );
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -605,8 +603,6 @@ export const updateItemController = async (req, res) => {
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -626,8 +622,6 @@ export const getLowStockItemsController = async (req, res) => {
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, success_message, data));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
