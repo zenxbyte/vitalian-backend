@@ -34,7 +34,6 @@ export const createDefaultUser = async () => {
 
     return;
   } catch (error) {
-    console.error(error);
     return;
   }
 };
@@ -83,8 +82,6 @@ export const createUserController = async (req, res) => {
       .status(httpStatus.CREATED)
       .json(ApiResponse.response(success_code, success_message));
   } catch (error) {
-    console.log(error);
-
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));

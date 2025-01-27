@@ -49,16 +49,13 @@ export const loginController = async (req, res) => {
 
     const updatedUser = await user.save();
 
-    return res
-      .status(httpStatus.OK)
-      .json(
-        ApiResponse.response(success_code, logged_in_success, {
-          user: updatedUser,
-          token,
-        })
-      );
+    return res.status(httpStatus.OK).json(
+      ApiResponse.response(success_code, logged_in_success, {
+        user: updatedUser,
+        token,
+      })
+    );
   } catch (error) {
-    console.log(error);
     return res
       .status(httpStatus.BAD_REQUEST)
       .json(ApiResponse.error(bad_request_code, error.message));
@@ -83,7 +80,6 @@ export const logoutController = async (req, res) => {
       .status(httpStatus.OK)
       .json(ApiResponse.response(success_code, logged_out_success));
   } catch (error) {
-    console.log(error);
     return res
       .status(httpStatus.BAD_REQUEST)
       .json(ApiResponse.error(bad_request_code, error.message));
