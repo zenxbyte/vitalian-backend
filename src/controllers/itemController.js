@@ -332,6 +332,7 @@ export const createItemController = async (req, res) => {
     }
     const files = req.files["file"];
     const chartFile = req.files["chart"];
+    const videoFile = req.files["video"];
     const formdata = JSON.parse(req.body.data);
     const { error, value } = itemValidationSchema.validate(formdata);
 
@@ -376,6 +377,18 @@ export const createItemController = async (req, res) => {
 
       itemSizeChart.imgKey = uploadedSizeChart.imgKey;
       itemSizeChart.imgUrl = uploadedSizeChart.imgUrl;
+    }
+
+    if (videoFile) {
+      const uploadedVideoClip = await uploadFileToS3(
+        videoFile[0],
+        `${category._id.toString()}/${savedItem._id.toString()}/${
+          videoFile[0].originalname
+        }`
+      );
+
+      savedItem.itemVideoClip.videoUrl = uploadedVideoClip.imgKey;
+      savedItem.itemVideoClip.videoKey = uploadedVideoClip.imgKey;
     }
 
     value.itemVariants.map(async (variant) => {
@@ -439,6 +452,7 @@ export const updateItemController = async (req, res) => {
 
     const files = req.files["file"];
     const chartFile = req.files["chart"];
+    const videoFile = req.files["video"];
     const formdata = JSON.parse(req.body.data);
 
     const { error, value } = itemUpdateSchema.validate(formdata);
@@ -572,7 +586,7 @@ export const updateItemController = async (req, res) => {
       imgKey: null,
     };
 
-    if (!value.itemSizeChart?.imgKey) {
+    if (!value.itemSizeChart?.imgKey && result.itemSizeChart?.imgKey) {
       await deleteImageFromS3(result.itemSizeChart.imgKey);
     }
 
@@ -589,6 +603,27 @@ export const updateItemController = async (req, res) => {
     }
 
     value.itemSizeChart = itemSizeChart;
+
+    if (videoFile) {
+      if (result.itemVideoClip.videoKey) {
+        await deleteImageFromS3(result.itemVideoClip.videoKey);
+      }
+
+      const uploadedVideoClip = await uploadFileToS3(
+        videoFile[0],
+        `${result.itemCategoryId.toString()}/${result._id.toString()}/${
+          videoFile[0].originalname
+        }`
+      );
+
+      const videoData = {
+        videoUrl: uploadedVideoClip.imgUrl,
+        videoKey: uploadedVideoClip.imgKey,
+        type: "video",
+      };
+
+      value.itemVideoClip = videoData;
+    }
 
     // Prepare the updated data with merged itemVariants
     delete value.itemVariants;

@@ -13,6 +13,7 @@ const variantSchema = new Schema({
     {
       imgUrl: { type: String, default: null },
       imgKey: { type: String, default: null },
+      type: { type: String, default: "image" },
       _id: false,
     },
   ],
