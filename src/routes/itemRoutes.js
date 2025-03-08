@@ -19,6 +19,7 @@ itemRoutes.post(
   upload.fields([
     { name: "file", maxCount: 10 },
     { name: "chart", maxCount: 1 },
+    { name: "video", maxCount: 1 },
   ]),
   createItemController
 );
@@ -27,6 +28,7 @@ itemRoutes.put(
   upload.fields([
     { name: "file", maxCount: 10 },
     { name: "chart", maxCount: 1 },
+    { name: "video", maxCount: 1 },
   ]),
   updateItemController
 );

@@ -1,5 +1,4 @@
 import httpStatus from "http-status";
-import { ObjectId } from "mongodb";
 import axios from "axios";
 
 import ApiResponse from "../services/ApiResponse.js";

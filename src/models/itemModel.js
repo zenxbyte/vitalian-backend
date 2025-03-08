@@ -21,6 +21,11 @@ const ItemSchema = new Schema(
       imgUrl: { type: String, default: null },
       imgKey: { type: String, default: null },
     },
+    itemVideoClip: {
+      videoUrl: { type: String, default: null },
+      videoKey: { type: String, default: null },
+      type: { type: String, default: "video" },
+    },
     // Item other information (common to all variants)
     itemInformation: {
       material: { type: String, default: null },

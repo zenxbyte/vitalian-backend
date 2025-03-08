@@ -4,6 +4,7 @@ import Joi from "joi";
 const itemImageSchema = Joi.object({
   imgUrl: Joi.string().uri().required(), // imgUrl should be a valid URI
   imgKey: Joi.string().required(), // imgKey should be a string
+  type: Joi.string().required(),
 });
 
 // Validation schema for each size object within an item variant
@@ -53,6 +54,11 @@ export const itemUpdateSchema = Joi.object({
   itemSizeChart: Joi.object({
     imgUrl: Joi.string().allow(null),
     imgKey: Joi.string().allow(null),
+  }),
+  itemVideoClip: Joi.object({
+    videoUrl: Joi.string().allow(null),
+    VideoKey: Joi.string().allow(null),
+    type: Joi.string().required(),
   }),
   itemVariants: Joi.array().items(variantSchema).min(1).required().messages({
     "array.min": "At least one item variant is required",

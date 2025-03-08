@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - uat
 
 jobs:
   deploy-main:
@@ -14,28 +13,3 @@ jobs:
     steps:
       - name: Deploy to environment
         run: echo "Main deployment"
-
-  deploy-uat:
-    runs-on: self-hosted
-    if: github.event_name == 'push' && github.ref == 'refs/heads/uat'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: "20"
-      - name: Deploy to environment
-        run: echo "UAT depolyment"
-      - name: Stop service
-        run: cd ~/server && sudo systemctl stop vitalian_uat_server.service
-      - name: Copy files
-        run: cd /home/ec2-user/actions-runner/_work/vitalian-backend && sudo cp -r vitalian-backend/* /home/ec2-user/server
-      - name: Change owner
-        run: sudo chown -R ec2-user:ec2-user /home/ec2-user/server/ && sudo chmod -R 755 /home/ec2-user/server/
-      - name: Install dependencies
-        run: cd /home/ec2-user/server/ && sudo npm i
-      - name: Start server
-        run: sudo systemctl start vitalian_uat_server.service
