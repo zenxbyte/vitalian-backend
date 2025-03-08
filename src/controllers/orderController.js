@@ -397,12 +397,38 @@ export const createDeliveryOrdersController = async (req, res) => {
         .json(ApiResponse.response(info_code, packed_orders_not_found));
     }
 
+    const wayBillIdList = [];
+
+    if (process.env.NODE_ENV === "prod") {
+      const params = new URLSearchParams();
+      params.append("apikey", process.env.KOOM_API_KEY);
+      params.append("limit", list.length);
+
+      const response = await axios.post(
+        "https://application.koombiyodelivery.lk/api/Waybils/users",
+        params,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      if (response.status !== 200 || response.data === "Invalid API Key") {
+        return res
+          .status(httpStatus.INTERNAL_SERVER_ERROR)
+          .json(ApiResponse.error(error_code, server_error));
+      }
+
+      wayBillIdList = response.data;
+    }
+
     // Add waybill and complete flow
-    list.forEach(async (order) => {
+    list.forEach(async (order, index) => {
       if (process.env.NODE_ENV === "prod") {
         const params = new URLSearchParams();
         params.append("apikey", process.env.KOOM_API_KEY);
-        params.append("orderWaybillid", "");
+        params.append("orderWaybillid", wayBillIdList[index].waybill_id);
         params.append("orderNo", order.orderId);
         params.append(
           "receiverName",
@@ -422,18 +448,18 @@ export const createDeliveryOrdersController = async (req, res) => {
           order.paymentDetails.method === PAY_ON_DELIVER ? order.orderTotal : ""
         );
 
-        // await axios.post(
-        //   "https://application.koombiyodelivery.lk/api/Addorders/users",
-        //   params,
-        //   {
-        //     headers: {
-        //       "Content-Type": "application/x-www-form-urlencoded",
-        //     },
-        //   }
-        // );
+        await axios.post(
+          "https://application.koombiyodelivery.lk/api/Addorders/users",
+          params,
+          {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+          }
+        );
       }
 
-      //order.orderWayBillId = ''
+      order.orderWayBillId = wayBillIdList[index].waybill_id;
       order.orderStatus = ORDER_DELIVERY_CREATED;
       await order.save();
     });
@@ -502,15 +528,15 @@ export const createPickUpOrdersController = async (req, res) => {
       params.append("phone", phone);
       params.append("qty", pickUpItems.length);
 
-      // await axios.post(
-      //   "https://application.koombiyodelivery.lk/api/Pickups/users",
-      //   params,
-      //   {
-      //     headers: {
-      //       "Content-Type": "application/x-www-form-urlencoded",
-      //     },
-      //   }
-      // );
+      await axios.post(
+        "https://application.koombiyodelivery.lk/api/Pickups/users",
+        params,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
     }
 
     const newLog = new DeliveryLogModel({
