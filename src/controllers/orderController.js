@@ -10,7 +10,10 @@ import ApiResponse from "../services/ApiResponse.js";
 import { orderCreateSchema } from "../schemas/createOrderSchema.js";
 import {
   delivery_orders_created,
+  item_not_found,
   item_quantity_not_enough,
+  item_size_not_found,
+  item_stocks_maximum,
   order_already_paid,
   order_cancelled_successfuly,
   order_cannot_cancel,
@@ -42,6 +45,7 @@ import DeliveryLogModel from "../models/deliveryLogModel.js";
 import { createPickupSchema } from "../schemas/createPickUpSchema.js";
 import { paymentStatusUpdateSchema } from "../schemas/paymentStatusSchema.js";
 import { PAY_ON_DELIVER } from "../constants/paymentMethods.js";
+import { orderItemStockCheckSchema } from "../schemas/orderItemStockCheckSchema.js";
 
 // Create Order Public
 export const createOrderController = async (req, res) => {
@@ -68,7 +72,7 @@ export const createOrderController = async (req, res) => {
               .json(
                 ApiResponse.error(
                   error_code,
-                  item_quantity_not_enough + item.code
+                  item_quantity_not_enough + variantInfo.variantProduct.itemTitle
                 )
               );
           } else {
@@ -649,3 +653,48 @@ export const updatePaymentStatus = async (req, res) => {
       .json(ApiResponse.error(error_code, error.message));
   }
 };
+
+export const confirmOrderItemStocksController = async(req, res) => {
+  try {
+    const { error, value } = orderItemStockCheckSchema.validate(req.body);
+
+    if (error) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(ApiResponse.error(error_code, error.message));
+    }
+
+    const { id, size, quantity } = value;
+    
+    const item = await VariantModel.findById(id);
+
+    if (!item) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(ApiResponse.error(error_code, item_not_found));
+    }
+
+    const sizeInfo = item.variantSizes.find(s => s.size === size);
+
+    if (!sizeInfo) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(ApiResponse.error(error_code, item_size_not_found));
+    }
+
+    if (quantity >= sizeInfo.quantity) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(ApiResponse.error(error_code, `Only ${quantity} items are available`));
+    }
+
+    return res
+        .status(httpStatus.OK)
+        .json(ApiResponse.error(success_code, success_message));
+    
+  } catch (error) {
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+}
