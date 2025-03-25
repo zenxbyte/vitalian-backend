@@ -13,7 +13,7 @@ const itemRoutes = express.Router();
 
 itemRoutes.get("/noAuth/items", getItemsController);
 itemRoutes.get("/noAuth/details/:id", getItemController);
-itemRoutes.get("/noAuth/by-category/:id", getItemsByCategoryController);
+itemRoutes.get("/noAuth/by-category", getItemsByCategoryController);
 itemRoutes.post(
   "/auth/create/:id",
   upload.fields([

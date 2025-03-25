@@ -56,7 +56,7 @@ export const getCitiesController = async (req, res) => {
     );
 
     const uniqueCities = [
-      ...new Map(filteredCities.map((city) => [city.city_id, city])).values(),
+      ...new Map(filteredCities.map((city) => [`${city.city_id}-${city.city_name.toLowerCase().trim()}`, city])).values(),
     ];
 
     return res

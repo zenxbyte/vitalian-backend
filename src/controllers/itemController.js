@@ -215,15 +215,14 @@ export const getItemsController = async (req, res) => {
 // Get product items by category Id
 export const getItemsByCategoryController = async (req, res) => {
   try {
-    const { id } = req.params;
-
     const page = parseInt(req.query.page);
     const limit = parseInt(req.query.limit);
+    const id = req.query.id;
 
     const skip = page * limit;
 
     const result = await ItemModel.aggregate([
-      { $match: { itemCategoryId: new ObjectId(id) } },
+      ...(id ? [{ $match: { itemCategoryId: new ObjectId(id) } }] : []),
       {
         $lookup: {
           from: "variants",
@@ -243,9 +242,13 @@ export const getItemsByCategoryController = async (req, res) => {
       },
     ]);
 
-    const count = await ItemModel.countDocuments({
-      itemCategoryId: new ObjectId(id),
-    });
+    const count = await ItemModel.countDocuments(
+      id
+        ? {
+            itemCategoryId: new ObjectId(id),
+          }
+        : {}
+    );
 
     return res
       .status(httpStatus.OK)
@@ -253,6 +256,8 @@ export const getItemsByCategoryController = async (req, res) => {
         ApiResponse.response(success_code, success_message, { result, count })
       );
   } catch (error) {
+    console.log(error);
+
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
