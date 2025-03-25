@@ -5,6 +5,7 @@ import {
   createDeliveryOrdersController,
   createOrderController,
   createPickUpOrdersController,
+  downloadOrdersExcelController,
   getOrderController,
   getOrderCountController,
   getOrdersController,
@@ -33,6 +34,7 @@ orderRoutes.post("/auth/request-pickup", createPickUpOrdersController);
 orderRoutes.get("/auth/recent-pickup-rqsts", recentPickupOrdersController);
 orderRoutes.post("/auth/cancel-order/:id", cancelOrderController);
 orderRoutes.post("/auth/update-payment-status", updatePaymentStatus);
-orderRoutes.post("/noAuth/check-quantity", confirmOrderItemStocksController)
+orderRoutes.post("/noAuth/check-quantity", confirmOrderItemStocksController);
+orderRoutes.get("/auth/orders-csv", downloadOrdersExcelController);
 
 export default orderRoutes;

@@ -1,5 +1,6 @@
 import httpStatus from "http-status";
 import { ObjectId } from "mongodb";
+import ExcelJS from "exceljs";
 
 import {
   error_code,
@@ -13,7 +14,6 @@ import {
   item_not_found,
   item_quantity_not_enough,
   item_size_not_found,
-  item_stocks_maximum,
   order_already_paid,
   order_cancelled_successfuly,
   order_cannot_cancel,
@@ -72,7 +72,8 @@ export const createOrderController = async (req, res) => {
               .json(
                 ApiResponse.error(
                   error_code,
-                  item_quantity_not_enough + variantInfo.variantProduct.itemTitle
+                  item_quantity_not_enough +
+                    variantInfo.variantProduct.itemTitle
                 )
               );
           } else {
@@ -152,6 +153,8 @@ export const getOrdersController = async (req, res) => {
     const skip = page * limit;
 
     const orderStatus = req.query.orderStatus;
+    const customerName = req.query.name;
+    const customerMobile = req.query.mobile;
     const paymentStatus = req.query.paymentStatus;
     const filterOrderId = req.query.orderId;
     const sortBy = req.query.sort;
@@ -172,6 +175,20 @@ export const getOrdersController = async (req, res) => {
     if (isValidString(filterOrderId)) {
       query.orderId = {
         $regex: `${filterOrderId}`,
+        $options: "i",
+      };
+    }
+
+    if (isValidString(customerName)) {
+      query["customer.firstName"] = {
+        $regex: `${customerName}`,
+        $options: "i",
+      };
+    }
+
+    if (isValidString(customerMobile)) {
+      query["customer.phone"] = {
+        $regex: `${customerMobile}`,
         $options: "i",
       };
     }
@@ -654,7 +671,8 @@ export const updatePaymentStatus = async (req, res) => {
   }
 };
 
-export const confirmOrderItemStocksController = async(req, res) => {
+// COnfirm Order Item Stocks Availability Controller
+export const confirmOrderItemStocksController = async (req, res) => {
   try {
     const { error, value } = orderItemStockCheckSchema.validate(req.body);
 
@@ -665,7 +683,7 @@ export const confirmOrderItemStocksController = async(req, res) => {
     }
 
     const { id, size, quantity } = value;
-    
+
     const item = await VariantModel.findById(id);
 
     if (!item) {
@@ -674,7 +692,7 @@ export const confirmOrderItemStocksController = async(req, res) => {
         .json(ApiResponse.error(error_code, item_not_found));
     }
 
-    const sizeInfo = item.variantSizes.find(s => s.size === size);
+    const sizeInfo = item.variantSizes.find((s) => s.size === size);
 
     if (!sizeInfo) {
       return res
@@ -685,16 +703,84 @@ export const confirmOrderItemStocksController = async(req, res) => {
     if (quantity >= sizeInfo.quantity) {
       return res
         .status(httpStatus.BAD_REQUEST)
-        .json(ApiResponse.error(error_code, `Only ${quantity} items are available`));
+        .json(
+          ApiResponse.error(error_code, `Only ${quantity} items are available`)
+        );
     }
 
     return res
-        .status(httpStatus.OK)
-        .json(ApiResponse.error(success_code, success_message));
-    
+      .status(httpStatus.OK)
+      .json(ApiResponse.error(success_code, success_message));
   } catch (error) {
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
   }
-}
+};
+
+// Download Orders in excel - filtered by status
+export const downloadOrdersExcelController = async (req, res) => {
+  const orderStatus = req.query.orderStatus;
+
+  const query = {};
+
+  if (isValidString(orderStatus) && ORDER_STATUS.includes(orderStatus)) {
+    query.orderStatus = orderStatus;
+  }
+  try {
+    const data = await OrderModel.find(query);
+
+    // Create a new Excel workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Orders");
+
+    // Define columns
+    worksheet.columns = [
+      { header: "Order ID", key: "orderId", width: 20 },
+      { header: "Customer Name", key: "customerName", width: 25 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Phone", key: "phone", width: 20 },
+      { header: "City", key: "city", width: 20 },
+      { header: "Country", key: "country", width: 20 },
+      { header: "Total Price", key: "orderTotal", width: 15 },
+      { header: "Payment Method", key: "paymentMethod", width: 20 },
+      { header: "Payment Status", key: "paymentStatus", width: 20 },
+      { header: "Order Status", key: "orderStatus", width: 20 },
+      { header: "Created At", key: "createdAt", width: 25 },
+    ];
+
+    // Populate rows with order data
+    data.forEach((order) => {
+      worksheet.addRow({
+        orderId: order.orderId,
+        customerName: `${order.customer.firstName} ${order.customer.lastName}`,
+        email: order.customer.email,
+        phone: order.customer.phone,
+        city: order.deliveryInfo.city.city_name,
+        country: order.deliveryInfo.country,
+        orderTotal: order.orderTotal,
+        paymentMethod: order.paymentDetails.method,
+        paymentStatus: order.paymentDetails.paymentStatus,
+        orderStatus: order.orderStatus,
+        createdAt: order.createdAt.toISOString(),
+      });
+    });
+
+    // Set response headers for file download
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=orders.xlsx");
+
+    // Send the workbook as a stream
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};

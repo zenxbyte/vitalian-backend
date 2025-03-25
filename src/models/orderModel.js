@@ -53,7 +53,7 @@ const OrderSchema = new Schema(
         district_id: { type: String, required: true },
         district_name: { type: String, required: true },
       },
-      postalCode: { type: String },
+      postalCode: { type: String, default: '' },
       country: { type: String, required: true },
     },
     paymentDetails: {
