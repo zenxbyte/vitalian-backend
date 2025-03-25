@@ -23,11 +23,15 @@ export const category_not_found = "Category not found";
 export const images_not_found = "Images required";
 export const item_not_found = "Item not found";
 export const item_quantity_not_enough = "Not enough stocks for ";
+export const item_size_not_found = "Size not available";
+export const item_size_stocks_not_enough = "Socks not enough";
+export const item_stocks_maximum = "Stocks maximum is "
 
 export const order_not_found = "Order not found";
 export const order_cancelled_successfuly = "Order successfully cancelled";
 export const order_cannot_cancel = "Order cannot cancel";
 export const order_already_paid = "Order already paid";
+
 
 export const message_sent = "Message sent successful";
 export const delivery_orders_created = "Delivery orders created successfuly";
