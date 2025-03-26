@@ -419,7 +419,7 @@ export const createDeliveryOrdersController = async (req, res) => {
         .json(ApiResponse.response(info_code, packed_orders_not_found));
     }
 
-    const wayBillIdList = [];
+    let wayBillIdList = [];
 
     if (process.env.NODE_ENV === "prod") {
       const params = new URLSearchParams();
@@ -442,12 +442,16 @@ export const createDeliveryOrdersController = async (req, res) => {
           .json(ApiResponse.error(error_code, server_error));
       }
 
-      wayBillIdList = response.data;
+      wayBillIdList = response.data.waybills;
     }
 
     // Add waybill and complete flow
     list.forEach(async (order, index) => {
-      if (process.env.NODE_ENV === "prod") {
+      if (
+        process.env.NODE_ENV === "prod" &&
+        wayBillIdList.length === list.length &&
+        order.orderStatus === ORDER_STATUS_PACKED
+      ) {
         const params = new URLSearchParams();
         params.append("apikey", process.env.KOOM_API_KEY);
         params.append("orderWaybillid", wayBillIdList[index].waybill_id);
@@ -479,11 +483,10 @@ export const createDeliveryOrdersController = async (req, res) => {
             },
           }
         );
+        order.orderWayBillId = wayBillIdList[index].waybill_id;
+        order.orderStatus = ORDER_DELIVERY_CREATED;
+        await order.save();
       }
-
-      order.orderWayBillId = wayBillIdList[index].waybill_id;
-      order.orderStatus = ORDER_DELIVERY_CREATED;
-      await order.save();
     });
 
     return res
