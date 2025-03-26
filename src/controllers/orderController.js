@@ -1,6 +1,7 @@
 import httpStatus from "http-status";
 import { ObjectId } from "mongodb";
 import ExcelJS from "exceljs";
+import axios from "axios";
 
 import {
   error_code,
@@ -700,7 +701,7 @@ export const confirmOrderItemStocksController = async (req, res) => {
         .json(ApiResponse.error(error_code, item_size_not_found));
     }
 
-    if (quantity >= sizeInfo.quantity) {
+    if (quantity > sizeInfo.quantity) {
       return res
         .status(httpStatus.BAD_REQUEST)
         .json(
