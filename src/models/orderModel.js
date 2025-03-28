@@ -41,6 +41,7 @@ const OrderSchema = new Schema(
       lastName: { type: String, required: true },
       email: { type: String, required: true },
       phone: { type: String, required: true },
+      secondaryPhone: { type: String, default: null },
     },
     deliveryInfo: {
       address: { type: String, required: true },
@@ -83,7 +84,6 @@ const OrderSchema = new Schema(
       enum: ORDER_STATUS,
       default: ORDER_STATUS_PENDING,
     },
-    orderDeliveryId: { type: String, default: null },
     deliveryDate: { type: Date, default: null }, // Optional: Expected delivery date
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
