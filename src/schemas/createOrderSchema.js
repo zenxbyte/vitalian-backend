@@ -26,7 +26,8 @@ export const orderCreateSchema = Joi.object({
     firstName: Joi.string().min(1).max(100).required(),
     lastName: Joi.string().min(1).max(100).required(),
     email: Joi.string().email().required(),
-    phone: Joi.string().min(7).max(15).required(), // Adjust based on your phone number format
+    phone: Joi.string().min(7).max(10).required(),
+    secondaryPhone: Joi.string().min(7).max(10).allow(null, ""),  
   }).required(),
 
   deliveryInfo: Joi.object({

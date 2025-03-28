@@ -2,6 +2,7 @@ import httpStatus from "http-status";
 import { ObjectId } from "mongodb";
 import ExcelJS from "exceljs";
 import axios from "axios";
+import PDFDocument from "pdfkit";
 
 import {
   error_code,
@@ -19,6 +20,7 @@ import {
   order_cancelled_successfuly,
   order_cannot_cancel,
   order_not_found,
+  order_pickup_rqst_failed,
   packed_orders_not_found,
   pick_request_created_already,
   pickup_items_not_found,
@@ -34,8 +36,6 @@ import {
   ORDER_STATUS_OUT_DELIVERY,
   ORDER_STATUS_PACKED,
   ORDER_STATUS_PENDING,
-  ORDER_STATUS_PROCESSING,
-  ORDER_STATUS_WAITING,
 } from "../constants/orderStatus.js";
 import { PAY_STATUS_PAID, PAYMENT_STATUS } from "../constants/paymentStatus.js";
 import { SORT_BY } from "../constants/sort-constants.js";
@@ -47,6 +47,7 @@ import { createPickupSchema } from "../schemas/createPickUpSchema.js";
 import { paymentStatusUpdateSchema } from "../schemas/paymentStatusSchema.js";
 import { PAY_ON_DELIVER } from "../constants/paymentMethods.js";
 import { orderItemStockCheckSchema } from "../schemas/orderItemStockCheckSchema.js";
+import { generateDeliveryInfoPDF } from "../services/pdfServices.js";
 
 // Create Order Public
 export const createOrderController = async (req, res) => {
@@ -198,10 +199,10 @@ export const getOrdersController = async (req, res) => {
 
     switch (sortBy) {
       case SORT_BY[0].value:
-        sort.createdAt = 1;
+        sort.createdAt = -1;
         break;
       case SORT_BY[1].value:
-        sort.createdAt = -1;
+        sort.createdAt = 1;
         break;
       default:
         sort.createdAt = 1;
@@ -367,19 +368,13 @@ export const updateOrderStatusController = async (req, res) => {
 
     switch (currentStatus) {
       case ORDER_STATUS_PENDING:
-        newStatus = ORDER_STATUS_PROCESSING;
-        break;
-      case ORDER_STATUS_PROCESSING:
         newStatus = ORDER_STATUS_PACKED;
-        break;
-      case ORDER_STATUS_WAITING:
-        newStatus = ORDER_STATUS_OUT_DELIVERY;
         break;
       case ORDER_STATUS_OUT_DELIVERY:
         newStatus = ORDER_STATUS_DELIVERED;
         break;
       default:
-        newStatus = ORDER_STATUS_PROCESSING;
+        newStatus = ORDER_STATUS_PENDING;
         break;
     }
 
@@ -467,14 +462,14 @@ export const createDeliveryOrdersController = async (req, res) => {
         );
         params.append("receiverCity", order.deliveryInfo.city.city_id);
         params.append("receiverPhone", order.customer.phone);
-        params.append("description", "");
+        params.append("description", "Clothing Items");
         params.append("spclNote", "");
         params.append(
           "getCod",
           order.paymentDetails.method === PAY_ON_DELIVER ? order.orderTotal : ""
         );
 
-        await axios.post(
+        const response = await axios.post(
           "https://application.koombiyodelivery.lk/api/Addorders/users",
           params,
           {
@@ -483,9 +478,12 @@ export const createDeliveryOrdersController = async (req, res) => {
             },
           }
         );
-        order.orderWayBillId = wayBillIdList[index].waybill_id;
-        order.orderStatus = ORDER_DELIVERY_CREATED;
-        await order.save();
+
+        if (response.data.status === "success") {
+          order.orderWayBillId = wayBillIdList[index].waybill_id;
+          order.orderStatus = ORDER_DELIVERY_CREATED;
+          await order.save();
+        }
       }
     });
 
@@ -553,7 +551,7 @@ export const createPickUpOrdersController = async (req, res) => {
       params.append("phone", phone);
       params.append("qty", pickUpItems.length);
 
-      await axios.post(
+      const response = await axios.post(
         "https://application.koombiyodelivery.lk/api/Pickups/users",
         params,
         {
@@ -562,18 +560,24 @@ export const createPickUpOrdersController = async (req, res) => {
           },
         }
       );
-    }
 
-    const newLog = new DeliveryLogModel({
-      ...value,
-      qty: pickUpItems.length,
-    });
+      if (response.data.status === "success") {
+        const newLog = new DeliveryLogModel({
+          ...value,
+          qty: pickUpItems.length,
+        });
 
-    await newLog.save();
+        await newLog.save();
 
-    for (const item of pickUpItems) {
-      item.orderStatus = ORDER_STATUS_WAITING;
-      await item.save();
+        for (const item of pickUpItems) {
+          item.orderStatus = ORDER_STATUS_OUT_DELIVERY;
+          await item.save();
+        }
+      } else {
+        return res
+          .status(httpStatus.CONFLICT)
+          .json(ApiResponse.error(error_code, order_pickup_rqst_failed));
+      }
     }
 
     return res
@@ -616,7 +620,11 @@ export const cancelOrderController = async (req, res) => {
         .json(ApiResponse.error(error_code, order_not_found));
     }
 
-    if (result.orderStatus === ORDER_STATUS_DELIVERED) {
+    if (
+      [ORDER_STATUS_DELIVERED, ORDER_STATUS_OUT_DELIVERY].includes(
+        result.orderStatus
+      )
+    ) {
       return res
         .status(httpStatus.PRECONDITION_FAILED)
         .json(ApiResponse.error(error_code, order_cannot_cancel));
@@ -780,6 +788,45 @@ export const downloadOrdersExcelController = async (req, res) => {
     // Send the workbook as a stream
     await workbook.xlsx.write(res);
     res.end();
+  } catch (error) {
+    return res
+      .status(httpStatus.INTERNAL_SERVER_ERROR)
+      .json(ApiResponse.error(error_code, error.message));
+  }
+};
+
+// Download Delivery Info PDF
+export const downloadDeliveryInfoPdfController = async (req, res) => {
+  try {
+    const _id = req.query.id;
+
+    const order = await OrderModel.findById(new ObjectId(_id));
+
+    if (!order) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(ApiResponse.error(error_code, order_not_found));
+    }
+
+    // Create a new PDF document
+    const doc = new PDFDocument({
+      size: [420, 595],
+      margins: { top: 20, left: 20, right: 20, bottom: 20 },
+    });
+
+    // Set response headers
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename=${order.orderId}.pdf`
+    );
+
+    // Stream the PDF buffer to the response
+    doc.pipe(res);
+
+    await generateDeliveryInfoPDF(doc, order);
+
+    doc.end();
   } catch (error) {
     console.log(error);
 

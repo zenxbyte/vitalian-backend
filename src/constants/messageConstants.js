@@ -31,7 +31,7 @@ export const order_not_found = "Order not found";
 export const order_cancelled_successfuly = "Order successfully cancelled";
 export const order_cannot_cancel = "Order cannot cancel";
 export const order_already_paid = "Order already paid";
-
+export const order_pickup_rqst_failed = "Pickup request failed";
 
 export const message_sent = "Message sent successful";
 export const delivery_orders_created = "Delivery orders created successfuly";
