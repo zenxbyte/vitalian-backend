@@ -1,5 +1,6 @@
 import BwipJs from "bwip-js";
 import { PAY_ON_DELIVER } from "../constants/paymentMethods.js";
+import { formatCurrency } from "./commonServices.js";
 
 export const generateDeliveryInfoPDF = async(doc, data) => {
   doc.image(process.env.RELATIVE_PATH + "/assets/VITALIAN-LOGO.png", 50, 50, {
@@ -76,12 +77,12 @@ export const generateDeliveryInfoPDF = async(doc, data) => {
   }
 
   const codAmount =
-    data.paymentDetails.method === PAY_ON_DELIVER ? data.orderTotal : "Paid";
+    data.paymentDetails.method === PAY_ON_DELIVER ? formatCurrency(data.orderTotal) : "Paid";
   doc
     .font("Helvetica-Bold")
     .fontSize(12)
-    .text("COD Amount:", 250, yPosition + 25);
-  doc.font("Helvetica").text(codAmount, 350, yPosition + 25);
+    .text("COD Amount:", 200, yPosition + 25);
+  doc.font("Helvetica").text(codAmount, 290, yPosition + 25);
 
   doc
     .moveTo(50, yPosition + 80)
