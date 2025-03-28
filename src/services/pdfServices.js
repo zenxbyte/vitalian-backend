@@ -2,7 +2,7 @@ import BwipJs from "bwip-js";
 import { PAY_ON_DELIVER } from "../constants/paymentMethods.js";
 
 export const generateDeliveryInfoPDF = async(doc, data) => {
-  doc.image("src/assets/VITALIAN-LOGO.png", 50, 50, {
+  doc.image(process.env.RELATIVE_PATH + "/assets/VITALIAN-LOGO.png", 50, 50, {
     width: 100,
     height: 100,
   });
