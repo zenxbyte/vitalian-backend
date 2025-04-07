@@ -40,12 +40,18 @@ import {
 import { PAY_STATUS_PAID, PAYMENT_STATUS } from "../constants/paymentStatus.js";
 import { SORT_BY } from "../constants/sort-constants.js";
 import VariantModel from "../models/variantModel.js";
-import { sendOrderConfirmedEmail } from "../services/emailServices.js";
+import {
+  sendOrderConfirmedEmail,
+  sendTestEmail,
+} from "../services/emailServices.js";
 import { statusUpdateSchema } from "../schemas/statusUpdateSchema.js";
 import DeliveryLogModel from "../models/deliveryLogModel.js";
 import { createPickupSchema } from "../schemas/createPickUpSchema.js";
 import { paymentStatusUpdateSchema } from "../schemas/paymentStatusSchema.js";
-import { PAY_ON_DELIVER } from "../constants/paymentMethods.js";
+import {
+  PAY_CREDIT_CARD,
+  PAY_ON_DELIVER,
+} from "../constants/paymentMethods.js";
 import { orderItemStockCheckSchema } from "../schemas/orderItemStockCheckSchema.js";
 import { generateDeliveryInfoPDF } from "../services/pdfServices.js";
 
@@ -110,6 +116,7 @@ export const createOrderController = async (req, res) => {
       .status(httpStatus.CREATED)
       .json(ApiResponse.response(success_code, success_message, savedOrder));
   } catch (error) {
+    console.log(error);
     return res
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
@@ -265,10 +272,10 @@ export const onPaymentSuccessController = async (req, res) => {
 
     const order = await OrderModel.findById(new ObjectId(id)).populate({
       path: "items.variant",
-      select: "variantColor variantSizes variantImages variantProduct",
+      select: "variantColor variantImages variantProduct",
       populate: {
         path: "variantProduct",
-        select: "itemTitle itemDescription",
+        select: "itemTitle itemPrice",
       },
     });
 
@@ -278,11 +285,15 @@ export const onPaymentSuccessController = async (req, res) => {
         .json(ApiResponse.error(error_code, order_not_found));
     }
 
-    order.paymentDetails.paymentStatus = PAY_STATUS_PAID;
+    if (order.paymentDetails.method === PAY_CREDIT_CARD) {
+      order.paymentDetails.paymentStatus = PAY_STATUS_PAID;
+    }
 
     const savedOrder = await order.save();
 
-    await sendOrderConfirmedEmail(savedOrder.customer.email, savedOrder);
+    if (order.paymentDetails.method === PAY_CREDIT_CARD) {
+      await sendOrderConfirmedEmail(savedOrder.customer.email, savedOrder);
+    }
 
     return res
       .status(httpStatus.OK)
@@ -834,4 +845,19 @@ export const downloadDeliveryInfoPdfController = async (req, res) => {
       .status(httpStatus.INTERNAL_SERVER_ERROR)
       .json(ApiResponse.error(error_code, error.message));
   }
+};
+
+export const testEmailConfirmationController = async () => {
+  const order = await OrderModel.find().populate({
+    path: "items.variant",
+    select: "variantColor variantSizes variantImages variantProduct",
+    populate: {
+      path: "variantProduct",
+      select: "itemTitle itemDescription",
+    },
+  });
+  const data = order[0];
+  await sendTestEmail("mojij24623@buides.com", data);
+
+  console.log("Email sent");
 };
