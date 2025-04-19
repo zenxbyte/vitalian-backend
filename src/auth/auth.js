@@ -6,6 +6,7 @@ import {
   access_denied,
   token_not_found,
 } from "../constants/messageConstants.js";
+import userModel from "../models/userModel.js";
 
 export const verifyToken = async (req, res, next) => {
   try {
