@@ -15,15 +15,17 @@ export const upload = multer({
   storage: storage,
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|mp4/; // Allowed file types
+    const filetypes = /jpeg|jpg|png|mp4|gif/i; // Allowed file types
     const mimetype = filetypes.test(file.mimetype);
+    
     const extname = filetypes.test(
       path.extname(file.originalname).toLowerCase()
     );
+    
     if (mimetype && extname) {
       return cb(null, true); // Accept file
     } else {
-      cb(new Error("Invalid file type. Only JPG, JPEG, PNG are allowed."));
+      cb(new Error("Invalid file type. Only JPG, JPEG, PNG, GIF and MP4 are allowed."));
     }
   },
 });
