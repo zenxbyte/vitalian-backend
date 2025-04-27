@@ -39,9 +39,9 @@ export const getItemsController = async (req, res) => {
 
     let query = { itemIsActive: true };
 
-    if (filterByPriceMin && filterByPriceMax) {
-      query["itemPrice"] = {
-        $gte: filterByPriceMin,
+    if (filterByPriceMin != null && filterByPriceMax != null) {
+      query.itemPrice = {
+        $gte: filterByPriceMin ?? 0,
         $lte: filterByPriceMax,
       };
     }
