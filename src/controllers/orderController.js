@@ -68,10 +68,22 @@ export const createOrderController = async (req, res) => {
 
     const { items } = value;
 
-    items.map(async (item) => {
+    for (const item of items) {
       const variantInfo = await VariantModel.findById(
         new ObjectId(item.variant)
       ).populate("variantProduct");
+      if (!variantInfo.variantProduct.itemIsActive) {
+        return res
+          .status(httpStatus.NOT_ACCEPTABLE)
+          .json(
+            ApiResponse.error(
+              error_code,
+              "Item " +
+                variantInfo.variantProduct.itemTitle +
+                " is not available."
+            )
+          );
+      }
       variantInfo.variantSizes.map((size) => {
         if (item.size === size.size) {
           if (item.quantity > size.quantity) {
@@ -91,7 +103,7 @@ export const createOrderController = async (req, res) => {
         }
       });
       await variantInfo.save();
-    });
+    };
 
     const newOrder = new OrderModel({
       orderId: generateOrderId(),
@@ -707,12 +719,23 @@ export const confirmOrderItemStocksController = async (req, res) => {
 
     const { id, size, quantity } = value;
 
-    const item = await VariantModel.findById(id);
+    const item = await VariantModel.findById(id).populate("variantProduct");
 
     if (!item) {
       return res
         .status(httpStatus.NOT_FOUND)
         .json(ApiResponse.error(error_code, item_not_found));
+    }
+
+    if (!item.variantProduct.itemIsActive) {
+      return res
+        .status(httpStatus.NOT_ACCEPTABLE)
+        .json(
+          ApiResponse.error(
+            error_code,
+            "Item " + item.variantProduct.itemTitle + " is not available."
+          )
+        );
     }
 
     const sizeInfo = item.variantSizes.find((s) => s.size === size);
